@@ -1,4 +1,5 @@
 import type { ApiSession } from './backend';
+import type { Point } from './geo';
 // Mock data + domain helpers. Mirrors the review doc §7 (status model) and §8 (sample data),
 // with the cast and values from the Group 9 Figma file. Swap for /api/v1/... calls once endpoints exist.
 
@@ -130,6 +131,10 @@ export type State = {
   board: Job[];
   techProfileId?: string;
   techRating?: { avg: number; count: number; jobs: number };
+  /** Technician's base location (from their phone or service area), for distances to requests. */
+  techPoint?: Point | null;
+  /** Unread notifications, as counted by the server. */
+  unreadCount?: number;
   wallet?: { balance: number; withdrawable: number };
   apiTxns?: { id: string; type: string; amount: number; status: string; at: number; ref: string; bank?: string; acct?: string; name?: string; jobId?: string }[];
 };

@@ -47,6 +47,12 @@
       ],
       "expo-notifications",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "RepairHub uses your location to show how far technicians are and to match nearby repair requests."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#3563E9",

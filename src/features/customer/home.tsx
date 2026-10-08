@@ -15,7 +15,7 @@ import { activeRoute, catNoun } from './common';
 export function Home() {
   const { s, set, toast } = useStore();
   const active = !!s.rid && s.status >= JobStatus.Requested && s.status < JobStatus.Released;
-  const unread = notesFor(s, 'customer').filter(n => !n.read).length;
+  const unread = s.unreadCount ?? notesFor(s, 'customer').filter(n => !n.read).length;
   const [group, setGroup] = React.useState('All');
   const tiles = POPULAR.filter(p => group === 'All' || p.group === group);
   const start = (cat: string, model?: string, desc?: string) => {

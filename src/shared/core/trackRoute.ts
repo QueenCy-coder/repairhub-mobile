@@ -17,9 +17,13 @@ const AREAS: [RegExp, number, number][] = [
   [/festac|amuwo/i, 6.4664, 3.2836],
   [/ikorodu/i, 6.6194, 3.5105],
 ];
-export function customerSpot(address?: string): LatLng {
+/** Centre of the Lagos area named in an address, or null if no known area is mentioned. */
+export function areaSpot(address?: string): LatLng | null {
   const hit = AREAS.find(([re]) => re.test(address ?? ''));
-  return hit ? { latitude: hit[1], longitude: hit[2] } : { latitude: LEKKI.lat, longitude: LEKKI.lng };
+  return hit ? { latitude: hit[1], longitude: hit[2] } : null;
+}
+export function customerSpot(address?: string): LatLng {
+  return areaSpot(address) ?? { latitude: LEKKI.lat, longitude: LEKKI.lng };
 }
 
 /** Road-like path (gentle zig-zag) from the technician's workshop ~3 km away to the customer. */
