@@ -2,30 +2,31 @@
 import { router } from 'expo-router';
 import React from 'react';
 import { Alert, View, Pressable, StyleSheet, Switch, Text, ScrollView, Animated } from 'react-native';
-import { Avatar, Bar, Bold, Btn, C, Card, Chip, Demo, IconTile, Muted, Row, Screen, T, Input, FadeIn, Btns, Chips, Empty, Field, Stars } from '../../shared/components/ui';
-import { techStats, maskAcct, plural, patchTechAccount, SERVICES, LAGOS_AREAS, first, jobs, custShort, isMine, isLiveArchived, myDoneJobs, shortDate } from '../../shared/core/data';
+import { Avatar, Bar, Bold, Btn, C, Card, Chip, IconTile, Muted, Row, Screen, T, Input, FadeIn, Chips, Empty, Stars } from '../../shared/components/ui';
+import { techStats, maskAcct, plural, SERVICES, LAGOS_AREAS, myDoneJobs, shortDate } from '../../shared/core/data';
 import * as backend from '../../shared/core/backend';
 import { useStore } from '../../shared/core/store';
 import { useLogout } from '../auth/login';
-import { Item } from '../customer/history';
 import { OfflineStrip, areaSummary } from './common';
+
+/** One row of the profile menu. */
+const MenuRow = ({ icon, label, sub, onPress }: { icon: string; label: string; sub?: string; onPress: () => void }) => (
+  <Card onPress={onPress} style={{ paddingVertical: 12 }}><Row style={{ gap: 8 }}><Row style={{ justifyContent: 'flex-start', gap: 12, flex: 1 }}><IconTile glyph={icon} size={38} /><View style={{ flex: 1 }}><T style={{ fontSize: 15, fontWeight: '600' }}>{label}</T>{sub ? <T style={{ fontSize: 12, color: C.mute }} numberOfLines={1}>{sub}</T> : null}</View></Row><T style={{ color: C.mute }}>›</T></Row></Card>
+);
 
 export function Me() {
   const { s } = useStore();
   const logout = useLogout();
-  const Item = ({ icon, label, sub, onPress }: { icon: string; label: string; sub?: string; onPress: () => void }) => (
-    <Card onPress={onPress} style={{ paddingVertical: 12 }}><Row style={{ gap: 8 }}><Row style={{ justifyContent: 'flex-start', gap: 12, flex: 1 }}><IconTile glyph={icon} size={38} /><View style={{ flex: 1 }}><T style={{ fontSize: 15, fontWeight: '600' }}>{label}</T>{sub ? <T style={{ fontSize: 12, color: C.mute }} numberOfLines={1}>{sub}</T> : null}</View></Row><T style={{ color: C.mute }}>›</T></Row></Card>
-  );
   return (
     <Screen title="Profile" back={false}>
       <OfflineStrip showToggle />
       <Row style={{ justifyContent: 'flex-start', gap: 14, marginBottom: 12 }}><Avatar label={s.techName} size={64} verified={s.techVerif === 'verified'} /><View style={{ flex: 1 }}><Bold style={{ fontSize: 18 }}>{s.techName}</Bold><Muted>Electronics technician{s.areas[0] ? ` · ${s.areas[0]}` : ''}</Muted><View style={{ marginTop: 6 }}><Bar pct={85} /></View><Muted style={{ fontSize: 12, marginTop: 2 }}>Profile 85% complete</Muted></View></Row>
-      <Item icon="🛠" label="Services & coverage" sub={`${plural(s.skills.length + (s.extraServices ?? []).length, 'service')} · ${areaSummary(s.areas ?? [])}`} onPress={() => router.push('/services')} />
-      <Item icon="⭐" label="Reviews" sub={techStats(s).reviews ? `${techStats(s).rating.toFixed(1)} · ${plural(techStats(s).reviews, 'review')}` : 'No reviews yet'} onPress={() => router.push('/reviews')} />
-      <Item icon="🛡" label="Verification" sub={s.techVerif === 'verified' ? 'Verified' : s.techVerif === 'rejected' ? 'Action needed' : 'In review'} onPress={() => router.push('/verification')} />
-      <Item icon="🏦" label="Payout account" sub={s.payoutAccount ? `${s.payoutAccount.bank} ${maskAcct(s.payoutAccount.number)}` : 'Not set up'} onPress={() => router.push('/payout-account')} />
-      <Item icon="🧾" label="Warranty claims" sub="Customers’ claims on your repairs" onPress={() => router.push('/tech-claim')} />
-      <Item icon="🔑" label="Change password" onPress={() => router.push('/new-password')} />
+      <MenuRow icon="🛠" label="Services & coverage" sub={`${plural(s.skills.length + (s.extraServices ?? []).length, 'service')} · ${areaSummary(s.areas ?? [])}`} onPress={() => router.push('/services')} />
+      <MenuRow icon="⭐" label="Reviews" sub={techStats(s).reviews ? `${techStats(s).rating.toFixed(1)} · ${plural(techStats(s).reviews, 'review')}` : 'No reviews yet'} onPress={() => router.push('/reviews')} />
+      <MenuRow icon="🛡" label="Verification" sub={s.techVerif === 'verified' ? 'Verified' : s.techVerif === 'rejected' ? 'Action needed' : 'In review'} onPress={() => router.push('/verification')} />
+      <MenuRow icon="🏦" label="Payout account" sub={s.payoutAccount ? `${s.payoutAccount.bank} ${maskAcct(s.payoutAccount.number)}` : 'Not set up'} onPress={() => router.push('/payout-account')} />
+      <MenuRow icon="🧾" label="Warranty claims" sub="Customers’ claims on your repairs" onPress={() => router.push('/tech-claim')} />
+      <MenuRow icon="🔑" label="Change password" onPress={() => router.push('/new-password')} />
       <Card tone="dash" style={{ paddingVertical: 12 }}><Row><Row style={{ justifyContent: 'flex-start', gap: 12 }}><IconTile glyph="🗓" size={38} bg={C.soft} /><T style={{ fontSize: 15, color: C.mute }}>Availability calendar</T></Row><Chip tone="off" label="Coming soon" /></Row></Card>
       <Btn title="Log out" variant="ghost" onPress={() => Alert.alert('Log out of RepairHub?', undefined, [{ text: 'Cancel', style: 'cancel' }, { text: 'Log out', style: 'destructive', onPress: logout }])} />
     </Screen>
@@ -92,20 +93,6 @@ export const PAST_REVIEWS = [
 ];
 
 export const DIST: [number, number][] = [[5, 56], [4, 6], [3, 2], [2, 1], [1, 0]];
-
-/** Reply to an earlier review (saved with that job in the permanent record). */
-function ReplyBox({ at }: { at: number }) {
-  const { set, toast } = useStore();
-  const [text, setText] = React.useState('');
-  return <>
-    <Field label="Reply (you can reply once)"><Input value={text} onChangeText={t => setText(t.slice(0, 300))} multiline placeholder="Thank the customer or add context" /></Field>
-    <Btn small title="Post reply" onPress={() => {
-      if (text.trim().length < 2) return toast('Write a reply first');
-      set(p => ({ doneJobs: (p.doneJobs ?? []).map(j => (j.at === at ? { ...j, reply: text.trim() } : j)) }));
-      toast('Reply posted');
-    }} />
-  </>;
-}
 
 export function Reviews() {
   const { s } = useStore();

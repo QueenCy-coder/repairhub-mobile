@@ -5,13 +5,13 @@ import React from 'react';
 import * as Linking from 'expo-linking';
 import { View, Pressable, Alert, Text, AppState, Platform } from 'react-native';
 import { CallButton } from '../../shared/components/callSheet';
-import { Avatar, CatTile, ChoiceOrType, Bold, Btn, C, Card, Field, H4, Link, Muted, Opt, Rating, Row, Screen, T, Banner, Demo, KV, Chip, SuccessMark, Title, FadeIn, Btns, Empty, Stepper } from '../../shared/components/ui';
+import { Avatar, CatTile, ChoiceOrType, Bold, Btn, C, Card, Field, H4, Link, Muted, Opt, Rating, Row, Screen, T, Banner, KV, Chip, SuccessMark, Title, FadeIn, Btns, Empty, Stepper } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
 import { DATES, escrowTotal, first, N, plural, selectedQuote, TIME_WINDOWS, JobStatus, intl, LEKKI, statusLabel, myPastRequests, shortDate } from '../../shared/core/data';
 import { useStore } from '../../shared/core/store';
-import { payLabel } from './common';
-import { Home } from './home';
+
+
 
 export function Book() {
   const { s, set, toast } = useStore();
@@ -63,7 +63,7 @@ export function Pay() {
       else if (r === 'failed') { setWaiting(false); set({ payErr: true, payRef: null }); }
       else if (!quiet) toast('Payment not received yet. Finish paying on the Paystack page, then check again.');
     } catch (e) { if (!quiet) toast(e instanceof Error ? e.message : 'Couldn’t check the payment'); }
-  }, [get, set, toast]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [get, set, toast]);
   React.useEffect(() => {
     if (!waiting) return;
     const id = setInterval(() => check(true), 4000);

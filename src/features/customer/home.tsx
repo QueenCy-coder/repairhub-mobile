@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Logo } from '../../shared/components/logo';
-import { Avatar, IconBox, FadeIn, Bold, C, Card, Chip, H4, Link, Muted, Row, Screen, T, Title, CatTile, Thumb, Banner, Chips, Empty, Input, Rating } from '../../shared/components/ui';
+import { Avatar, FadeIn, Bold, C, Card, Chip, H4, Link, Muted, Row, Screen, T, Title, CatTile, Thumb, Banner, Chips, Empty, Input, Rating } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
 import { devicePhoto, HOME_GROUPS, isListedModel, first, JobStatus, POPULAR, N, plural, quotes, selectedQuote, statusLabel, notesFor } from '../../shared/core/data';

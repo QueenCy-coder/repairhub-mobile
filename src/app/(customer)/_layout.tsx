@@ -8,7 +8,7 @@ import { C } from '../../shared/components/ui';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 /** Filled icon when the tab is active, outline otherwise (iOS convention). */
-const icon = (name: IconName) => ({ color, focused }: { color: ColorValue; focused: boolean }) => <Ionicons name={(focused ? name : `${name}-outline`) as IconName} size={22} color={color as string} />;
+const icon = (name: IconName) => function TabIcon({ color, focused }: { color: ColorValue; focused: boolean }) { return <Ionicons name={(focused ? name : `${name}-outline`) as IconName} size={22} color={color as string} />; };
 
 /** Figma customer tab bar: Home · My Repairs · Profile */
 export default function CustomerTabs() {

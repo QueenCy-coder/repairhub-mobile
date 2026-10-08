@@ -1,4 +1,5 @@
 // Shared route for the "technician on the way" map: from the technician's workshop to the customer.
+import React from 'react';
 import { LEKKI } from './data';
 
 export type LatLng = { latitude: number; longitude: number };
@@ -48,7 +49,6 @@ export function techPosition(elapsed: number, ROUTE: LatLng[]): { at: LatLng; mi
 }
 
 /** Re-renders every few seconds so the marker moves. */
-import React from 'react';
 export function useTick(ms = 3000) {
   const [now, setNow] = React.useState(Date.now());
   React.useEffect(() => { const t = setInterval(() => setNow(Date.now()), ms); return () => clearInterval(t); }, [ms]);

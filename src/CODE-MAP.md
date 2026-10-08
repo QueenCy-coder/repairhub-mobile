@@ -31,7 +31,7 @@ src/
 │       ├── warranty-claims.tsx Respond to a warranty claim
 │       ├── earnings.tsx       Earnings overview
 │       ├── profile.tsx        Profile tab, services & coverage, reviews
-│       ├── payouts/           verification (BVN/selfie/PIN), payout-account, withdraw, transactions
+│       ├── payouts/           payout-account, withdraw, transactions
 │       └── common.tsx         Helpers used by several technician screens
 └── shared/
     ├── components/            Design system (ui.tsx), logo, dialogs, call sheet, notifications list, live map

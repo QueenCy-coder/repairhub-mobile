@@ -1,6 +1,5 @@
 // Transaction ledger and receipts.
 import Ionicons from '@expo/vector-icons/Ionicons';
-import * as Device from 'expo-device';
 import { useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { Share, Pressable, View, Text } from 'react-native';

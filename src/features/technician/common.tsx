@@ -2,10 +2,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { Switch, Text, View, Image } from 'react-native';
-import { Banner, Bold, C, Muted, Row, T, Screen, Card, Timeline, Demo, IconBox, FadeIn, CatTile } from '../../shared/components/ui';
-import { techStats, walletBase, escrowTotal, isMine, JobStatus, net, COMMISSION, jobs, nowLabel, custFirst, DATES } from '../../shared/core/data';
+import { Banner, Bold, C, Muted, Row, T, Card, Timeline, IconBox, FadeIn, CatTile } from '../../shared/components/ui';
+import { techStats, walletBase, escrowTotal, isMine, JobStatus, net, COMMISSION } from '../../shared/core/data';
 import { useStore } from '../../shared/core/store';
-import { Warranty } from '../customer/warranty';
+
 
 /** Technician connectivity strip: offline queue + last sync (offline-mode deliverable). */
 export function OfflineStrip({ showToggle, toggleOnly }: { showToggle?: boolean; toggleOnly?: boolean }) {

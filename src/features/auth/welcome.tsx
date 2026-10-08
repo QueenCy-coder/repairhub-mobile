@@ -4,8 +4,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Logo } from '../../shared/components/logo';
-import { Btn, Muted, Screen, Title, Bold, C, Card, FadeIn, Link, Row } from '../../shared/components/ui';
-import { Account, IMG } from '../../shared/core/data';
+import { Btn, Muted, Screen, Title, C, FadeIn } from '../../shared/components/ui';
+import { IMG } from '../../shared/core/data';
 import { useStore } from '../../shared/core/store';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -26,6 +26,23 @@ export function Onboarding() {
 
 /* Role picker (Figma: Technician Onboarding / Welcome to RepairHub) */
 
+/** “I need a repair” / “I’m a technician” card. */
+const RoleCard = ({ title, sub, art, icon, iconColor, bg, onPress }: { title: string; sub: string; art: number; icon: React.ComponentProps<typeof Ionicons>['name']; iconColor: string; bg: string; onPress: () => void }) => (
+  <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}. ${sub}`}
+    style={({ pressed }) => ({ backgroundColor: bg, borderRadius: 20, overflow: 'hidden', marginBottom: 18, flexDirection: 'row', minHeight: 158, transform: [{ scale: pressed ? 0.98 : 1 }] })}>
+    <Image source={art} style={{ width: '42%', alignSelf: 'stretch' }} contentFit="cover" contentPosition="bottom left" accessibilityIgnoresInvertColors />
+    <View style={{ flex: 1, paddingTop: 16, paddingRight: 14, paddingBottom: 14, paddingLeft: 4 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#DCE8FD', alignItems: 'center', justifyContent: 'center' }}><Ionicons name={icon} size={16} color={iconColor} /></View>
+        <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: C.ink }}>{title}</Text>
+      </View>
+      <Text style={{ fontSize: 14, lineHeight: 20, color: '#3D4350', marginTop: 8 }}>{sub}</Text>
+      <View style={{ flex: 1 }} />
+      <View style={{ alignSelf: 'flex-end', width: 36, height: 36, borderRadius: 18, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="arrow-forward" size={20} color="#fff" /></View>
+    </View>
+  </Pressable>
+);
+
 export function RolePicker() {
   const { set } = useStore();
   // Same choice for both paths: pick who you are, then create that account or log in to it.
@@ -33,21 +50,6 @@ export function RolePicker() {
   const [mode, setMode] = useState<'signup' | 'login'>(params.mode === 'login' ? 'login' : 'signup');
   const pick = (r: 'customer' | 'technician') => { set({ signupRole: r, authMode: mode }); router.push(mode === 'login' ? '/login' : '/signup'); };
   // Figma "Welcome to RepairHub": illustrated cards, icon chip beside the title, round arrow button.
-  const RoleCard = ({ title, sub, art, icon, iconColor, bg, onPress }: { title: string; sub: string; art: number; icon: React.ComponentProps<typeof Ionicons>['name']; iconColor: string; bg: string; onPress: () => void }) => (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}. ${sub}`}
-      style={({ pressed }) => ({ backgroundColor: bg, borderRadius: 20, overflow: 'hidden', marginBottom: 18, flexDirection: 'row', minHeight: 158, transform: [{ scale: pressed ? 0.98 : 1 }] })}>
-      <Image source={art} style={{ width: '42%', alignSelf: 'stretch' }} contentFit="cover" contentPosition="bottom left" accessibilityIgnoresInvertColors />
-      <View style={{ flex: 1, paddingTop: 16, paddingRight: 14, paddingBottom: 14, paddingLeft: 4 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#DCE8FD', alignItems: 'center', justifyContent: 'center' }}><Ionicons name={icon} size={16} color={iconColor} /></View>
-          <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: C.ink }}>{title}</Text>
-        </View>
-        <Text style={{ fontSize: 14, lineHeight: 20, color: '#3D4350', marginTop: 8 }}>{sub}</Text>
-        <View style={{ flex: 1 }} />
-        <View style={{ alignSelf: 'flex-end', width: 36, height: 36, borderRadius: 18, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="arrow-forward" size={20} color="#fff" /></View>
-      </View>
-    </Pressable>
-  );
   return (
     <Screen title="">
       <View style={{ alignItems: 'center', marginBottom: 24 }}>
