@@ -9,6 +9,7 @@ import { AnimatedNumber, Avatar, IconBox, InfoTag, StatusPill, FadeIn, Bold, Btn
 import { techStats, first, isMine, JobStatus, availableJobs, jobTitle, typicalPrice, displayName, greeting, todayLabel, custShort, N, statusLabel, notesFor, myDoneJobs } from '../../shared/core/data';
 import { call } from '../../shared/core/native';
 import * as backend from '../../shared/core/backend';
+import { kmLabel } from '../../shared/core/geo';
 import { useStore } from '../../shared/core/store';
 import { ActionRow, JobPhoto, OfflineStrip, useWallet } from './common';
 
@@ -18,7 +19,7 @@ export function TechHome() {
   const { s, set } = useStore();
   const w = useWallet();
   const [period, setPeriod] = React.useState<(typeof PERIODS)[number]>('This week');
-  const unread = notesFor(s, 'technician').filter(n => !n.read).length;
+  const unread = s.unreadCount ?? notesFor(s, 'technician').filter(n => !n.read).length;
   const bell = (
     <Pressable onPress={() => router.push('/tech-alerts')} hitSlop={10} accessibilityLabel={`Notifications, ${unread}`}>
       <Ionicons name="notifications-outline" size={26} color={C.ink} />
@@ -169,7 +170,7 @@ export function TechHome() {
               <JobPhoto cat={j.cat} model={j.dev} size={64} />
               <View style={{ flex: 1, gap: 3 }}>
                 <T style={{ fontSize: 15, fontWeight: '700' }} numberOfLines={2}>{jobTitle(j)}</T>
-                <InfoTag icon="location-outline" label={`${j.area} • ${j.mode}`} />
+                <InfoTag icon="location-outline" label={`${Number.isFinite(j.km) ? `${kmLabel(j.km)} · ` : ''}${j.area} • ${j.mode}`} />
                 <T style={{ fontSize: 15, fontWeight: '800' }}>~{N(typicalPrice(j.cat, j.issue))}</T>
               </View>
               <View style={{ borderWidth: 1.5, borderColor: C.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 }}>

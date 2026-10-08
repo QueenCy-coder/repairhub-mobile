@@ -7,11 +7,14 @@ import { InfoTag, MiniSteps, StatusPill, Banner, FadeIn, Btn, Btns, C, Card, Chi
 import { techStats, escrowTotal, isMine, JobStatus, LIVE_CATEGORIES, availableJobs, jobTitle, typicalPrice, todayLabel, custShort, myQuote, N, net, plural, jobById, COMMISSION, grouped } from '../../shared/core/data';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
+import { kmLabel } from '../../shared/core/geo';
 import { useStore } from '../../shared/core/store';
 import { ACTIVE_STEPS, JobPhoto, OfflineStrip, activeStep, shortIssue, useWallet } from './common';
 
 /** Display reference for a job: the live job's request, or an open request's id. */
 export const refOf = (id: string, rid?: string | null) => (id === 'RH-0841' ? shortRef(rid) : id.startsWith('RH-') ? id : shortRef(id));
+
+const NEARBY_KM = 10;
 
 export function Jobs() {
   const { s, set } = useStore();
@@ -26,9 +29,11 @@ export function Jobs() {
   const [q, setQ] = React.useState('');
   const [filtering, setFiltering] = React.useState(false);
   const [cat, setCat] = React.useState<string | null>(null);
+  const [nearby, setNearby] = React.useState(false);
   const verified = s.techVerif === 'verified';
   const match = (title: string, who: string, c: string) => (!q.trim() || `${title} ${who}`.toLowerCase().includes(q.trim().toLowerCase())) && (!cat || c === cat);
-  const list = available.filter(j => match(jobTitle(j), j.cust, j.cat));
+  // “Nearby”: within 10 km of the technician's base; requests without a location are kept out of this view.
+  const list = available.filter(j => match(jobTitle(j), j.cust, j.cat) && (!nearby || (Number.isFinite(j.km) && j.km <= NEARBY_KM)));
   const iconBtn = (name: React.ComponentProps<typeof Ionicons>['name'], on: boolean, onPress: () => void, label: string) => (
     <Pressable onPress={onPress} hitSlop={8} accessibilityRole="button" accessibilityLabel={label} style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.primarySoft : 'transparent' }}>
       <Ionicons name={name} size={24} color={on ? C.primary : C.ink} />
@@ -40,10 +45,10 @@ export function Jobs() {
       <OfflineStrip />
       <Row style={{ marginBottom: 12 }}>
         <Title style={{ fontSize: 30, marginBottom: 0 }}>Jobs</Title>
-        <Row style={{ gap: 4 }}>{iconBtn('search', searching, () => { setSearching(v => !v); if (searching) setQ(''); }, 'Search jobs')}{iconBtn('options-outline', filtering, () => { setFiltering(v => !v); if (filtering) setCat(null); }, 'Filter by device')}</Row>
+        <Row style={{ gap: 4 }}>{iconBtn('search', searching, () => { setSearching(v => !v); if (searching) setQ(''); }, 'Search jobs')}{iconBtn('options-outline', filtering, () => { setFiltering(v => !v); if (filtering) { setCat(null); setNearby(false); } }, 'Filter by device')}</Row>
       </Row>
       {searching ? <FadeIn><Input icon="⌕" value={q} onChangeText={setQ} placeholder="Search by device, repair or customer" autoFocus /></FadeIn> : null}
-      {filtering ? <FadeIn><Chips>{[null, ...(s.skills.length ? s.skills : LIVE_CATEGORIES)].map(c => <Chip key={c ?? 'all'} label={c ?? 'All devices'} tone={cat === c ? 'on' : undefined} onPress={() => setCat(c)} />)}</Chips></FadeIn> : null}
+      {filtering ? <FadeIn><Chips>{[null, ...(s.skills.length ? s.skills : LIVE_CATEGORIES)].map(c => <Chip key={c ?? 'all'} label={c ?? 'All devices'} tone={cat === c ? 'on' : undefined} onPress={() => setCat(c)} />)}<Chip label={`📍 Within ${NEARBY_KM} km`} tone={nearby ? 'on' : undefined} onPress={() => setNearby(v => !v)} /></Chips></FadeIn> : null}
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 4, marginBottom: 14 }}>
         {tabs.map(([k, l]) => (
           <Pressable key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityState={{ selected: tab === k }}
@@ -70,7 +75,7 @@ export function Jobs() {
                       {!mine ? <View style={{ backgroundColor: C.primary, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}><Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>New</Text></View> : null}
                     </Row>
                     <T style={{ fontSize: 13, color: C.text, fontWeight: '600' }}>{j.cust}</T>
-                    <InfoTag icon="location-outline" label={`${j.area} • ${j.mode}`} />
+                    <InfoTag icon="location-outline" label={`${Number.isFinite(j.km) ? `${kmLabel(j.km)} · ` : ''}${j.area} • ${j.mode}`} />
                     <InfoTag icon="calendar-outline" label={`${j.when} · posted ${j.ago}`} />
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
@@ -146,7 +151,7 @@ export function JobDetails() {
     <Screen title="Job details" footer={booked
       ? isMine(s) && s.status < JobStatus.Released ? <Btn title={s.status === JobStatus.Booked ? 'Respond to booking' : 'Open job'} onPress={() => router.push(s.status === JobStatus.Booked ? '/booking-request' : '/job')} /> : undefined
       : <Btn title={myQuote(s, j.id) ? 'Revise quote' : 'Send a quote'} disabled={s.techVerif !== 'verified'} onPress={() => router.push('/send-quote')} />}>
-      <Row><Row style={{ justifyContent: 'flex-start', gap: 10 }}><Avatar label={j.cust} size={40} uri={j.id === 'RH-0841' ? (s.owner?.photo ?? s.custPhoto) : undefined} /><View><Bold style={{ fontSize: 14 }}>{j.cust}</Bold><Muted style={{ fontSize: 12 }}>{refOf(j.id, s.rid)}</Muted></View></Row><Chip tone="blue" label={j.area} /></Row>
+      <Row><Row style={{ justifyContent: 'flex-start', gap: 10 }}><Avatar label={j.cust} size={40} uri={j.id === 'RH-0841' ? (s.owner?.photo ?? s.custPhoto) : undefined} /><View><Bold style={{ fontSize: 14 }}>{j.cust}</Bold><Muted style={{ fontSize: 12 }}>{refOf(j.id, s.rid)}</Muted></View></Row><Chip tone="blue" label={`${Number.isFinite(j.km) ? `${kmLabel(j.km)} · ` : ''}${j.area}`} /></Row>
       <H4>{j.dev}</H4>
       <T style={{ fontSize: 14, color: C.text, marginTop: -4 }}>{j.issue}</T>
       <View style={{ marginTop: 12 }}>{media.length ? <MediaGrid items={media} max={media.length} />
@@ -190,7 +195,7 @@ export function SendQuote() {
   if (booked) return <Screen title="Send quote"><Empty title="This request is closed" sub={isMine(s) ? 'The customer booked you. Open the job to continue.' : 'The customer chose another technician.'} action={isMine(s) ? 'Open job' : 'Back to jobs'} onPress={() => router.replace(isMine(s) ? '/job' : '/jobs')} /></Screen>;
   return (
     <Screen title={existing ? 'Revise quote' : 'Send quote'} footer={<Btn title={busy ? 'Sending…' : `${existing ? 'Update quote' : 'Send quote'}${total ? ` · ${N(total)}` : ''}`} disabled={busy} onPress={send} />}>
-      <Card tone="soft"><Row style={{ justifyContent: 'flex-start', gap: 12 }}><CatTile model={j.dev} cat={j.cat} bg="#fff" /><View style={{ flex: 1 }}><Bold style={{ fontSize: 14 }}>{refOf(j.id)} · {j.dev}</Bold><Muted style={{ fontSize: 12 }}>{j.area} · {j.mode}</Muted><T style={{ fontSize: 12, color: C.mute, lineHeight: 16 }} numberOfLines={2}>{j.issue}</T></View></Row></Card>
+      <Card tone="soft"><Row style={{ justifyContent: 'flex-start', gap: 12 }}><CatTile model={j.dev} cat={j.cat} bg="#fff" /><View style={{ flex: 1 }}><Bold style={{ fontSize: 14 }}>{refOf(j.id)} · {j.dev}</Bold><Muted style={{ fontSize: 12 }}>{Number.isFinite(j.km) ? `${kmLabel(j.km)} · ` : ''}{j.area} · {j.mode}</Muted><T style={{ fontSize: 12, color: C.mute, lineHeight: 16 }} numberOfLines={2}>{j.issue}</T></View></Row></Card>
       {existing ? <Banner tone="blue" icon="ℹ︎">{`Your current quote: ${N(existing.labour + existing.parts)} · ${plural(existing.days, 'day')} · ${plural(existing.warr, 'month')} warranty`}</Banner> : null}
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={{ flex: 1 }}><Field label="Labour (₦)" required error={tried && err.labour}><Input invalid={tried && !!err.labour} value={grouped(labour)} onChangeText={t => setLabour(t.replace(/\D/g, '').replace(/^0+/, '').slice(0, 7))} keyboardType="number-pad" placeholder="e.g. 6000" /></Field></View>

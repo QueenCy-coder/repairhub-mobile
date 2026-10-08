@@ -7,6 +7,7 @@ import { Alert, Text, View, Pressable, ScrollView } from 'react-native';
 import { FadeIn, Btn, C, Card, Countdown, KV, Muted, Pulse, Screen, Title, Avatar, Bold, Btns, Chip, Chips, Rating, Row, T, Banner, Empty, CatTile, H4 } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
+import { kmLabel } from '../../shared/core/geo';
 import { first, JobStatus, plural, quotes, N, selectedQuote, Sort, CERT_IMG, RECENT_WORK, repairPhoto, techProfile, serviceOf, agoLabel } from '../../shared/core/data';
 import { useStore } from '../../shared/core/store';
 import { Viewer, catNoun } from './common';
@@ -54,7 +55,7 @@ export function QuoteCard({ q, best, locked }: { q: ReturnType<typeof quotes>[nu
         <Avatar label={q.name} size={48} verified />
         <View style={{ flex: 1 }}>
           <Row><Bold>{q.name}</Bold><T style={{ fontSize: 19, fontWeight: '800' }}>{N(q.total)}</T></Row>
-          <Rating r={q.rating} extra={[q.jobs ? plural(q.jobs, 'job') : '', q.areas?.length ? q.areas.slice(0, 2).join(', ') : ''].filter(Boolean).map(x => `· ${x}`).join(' ')} />
+          <Rating r={q.rating} extra={[q.jobs ? plural(q.jobs, 'job') : '', Number.isFinite(q.km) ? `${kmLabel(q.km)} away` : q.areas?.length ? q.areas.slice(0, 2).join(', ') : ''].filter(Boolean).map(x => `· ${x}`).join(' ')} />
         </View>
       </Row>
       <Muted style={{ marginTop: 8, fontSize: 13 }}>⏱ Ready in {plural(q.days, 'day')}   ·   🛡 {plural(q.warr, 'month')} warranty</Muted>
@@ -145,7 +146,7 @@ export function TechProfile() {
         <Row style={{ alignItems: 'flex-end' }}><View style={{ borderWidth: 4, borderColor: '#fff', borderRadius: 48 }}><Avatar label={n} size={84} verified /></View>{t.resp ? <Chip tone="ok" label={`● Online · replies ${t.resp}`} /> : <Chip tone="ok" label="✓ Verified by RepairHub" />}</Row>
         <Title style={{ marginTop: 8, marginBottom: 2 }}>{n}</Title>
         <Muted>{t.title}</Muted>
-        <Rating r={t.r} extra={`${t.reviews ? `(${plural(t.reviews, 'review')})` : '· no reviews yet'}${Number.isFinite(t.km) ? ` · ${t.km} km away` : ''}`} />
+        <Rating r={t.r} extra={`${t.reviews ? `(${plural(t.reviews, 'review')})` : '· no reviews yet'}${Number.isFinite(q?.km ?? NaN) ? ` · ${kmLabel(q!.km)} away` : Number.isFinite(t.km) ? ` · ${t.km} km away` : ''}`} />
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
           {stats.map(([icon, v, l]) => (
             <View key={l} style={{ flex: 1, backgroundColor: C.primarySoft, borderRadius: 12, paddingVertical: 12, alignItems: 'center', gap: 2 }}>

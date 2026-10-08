@@ -2,7 +2,8 @@
 // The screens were designed around one live repair per person (the `State` fields: cat, model, status, …).
 // `refresh` loads the signed-in person's data from the API into those fields; the actions below send what
 // the person does to the API and then refresh. The server is the source of truth for everything shared.
-import { api, appendMedia, ApiError, setToken, shortRef } from './api';
+import { api, apiWithMeta, appendMedia, ApiError, setToken, shortRef } from './api';
+import { addressPoint, bestPoint, distanceKm, fromGeo, Point } from './geo';
 import {
   Account, DoneJob, initialState, Job, JobStatus, Media, nowLabel, PayoutAccount, Quote, Role, State, TechQuote, agoLabel, areaOf,
 } from './data';
@@ -127,7 +128,7 @@ export async function login(p: { role: Role; email: string; password: string }, 
 
 export function logout(set: Set) {
   setToken(null);
-  profileFor = ''; afterFor = ''; appointments.clear(); requests.clear(); techProf = null; techReviews = []; extrasDue = true; topNote = '';
+  profileFor = ''; afterFor = ''; appointments.clear(); requests.clear(); techProf = null; techReviews = []; baseFilled = false; extrasDue = true; topNote = '';
   set({ ...initialState(), api: null });
 }
 
@@ -195,13 +196,13 @@ let topNote = '';
 let extrasDue = true;
 async function notifications(get: Get, set: Set) {
   const me = get(), role = me.api!.role, to = role === 'technician' ? me.techPhone : me.phone;
-  const list = await api<any[]>('GET', '/notifications', { query: { limit: 40 } });
+  const { data: list, meta } = await apiWithMeta<any[]>('GET', '/notifications', { query: { limit: 40 } });
   topNote = list[0] ? String(list[0].createdAt) : '';
-  set({ notifications: list.map(n => ({ id: n._id, title: NOTE_TITLE[n.type] ?? 'RepairHub', body: n.message, at: nowLabel(new Date(n.createdAt)), ts: ts(n.createdAt), route: noteRoute(role, n.type), role, to, read: n.isRead })) });
+  set({ unreadCount: typeof meta.unreadCount === 'number' ? meta.unreadCount : undefined, notifications: list.map(n => ({ id: n._id, title: NOTE_TITLE[n.type] ?? 'RepairHub', body: n.message, at: nowLabel(new Date(n.createdAt)), ts: ts(n.createdAt), route: noteRoute(role, n.type), role, to, read: n.isRead })) });
 }
 
 /** Quotes on the customer's request, in the app's Quote shape; technicians are added to `accounts` for their profiles. */
-async function loadQuotes(rid: string, get: Get, set: Set) {
+async function loadQuotes(rid: string, get: Get, set: Set, at: Point | null) {
   const list = await api<any[]>('GET', `/quotations/repair-request/${rid}`);
   const quotes: Quote[] = list.map(q => ({
     id: q._id, name: q.technicianId?.userId?.fullName ?? 'Technician', rating: Math.round((q.technicianId?.ratingAvg ?? 0) * 10) / 10, jobs: q.technicianId?.jobsCompleted ?? 0,
@@ -214,6 +215,8 @@ async function loadQuotes(rid: string, get: Get, set: Set) {
     if (!techProfiles.has(q.techId)) techProfiles.set(q.techId, await api<any>('GET', `/technician-profiles/${q.techId}`).catch(() => null));
     return techProfiles.get(q.techId);
   }));
+  // Distance from each technician's base location to the repair (when both are known).
+  profiles.forEach((p, i) => { const b = fromGeo(p?.baseLocation); if (b && at) quotes[i].km = Math.round(distanceKm(b, at) * 10) / 10; });
   const cur = get();
   const accounts: Account[] = quotes.map((q, i) => {
     const p = profiles[i];
@@ -269,7 +272,7 @@ async function refreshCustomer(get: Get, set: Set) {
   };
   if (live.status === 'cancelled') { set({ ...base, status: JobStatus.None, sel: null }); return notifications(get, set); }
 
-  const quotes = await loadQuotes(live._id, get, set);
+  const quotes = await loadQuotes(live._id, get, set, fromGeo(live.location));
   const job = jobOf(live._id);
   if (!job) {
     set({ ...base, status: quotes.length ? JobStatus.Quoted : JobStatus.Requested, quoted: quotes.length > 0, quotesIn: quotes.length, jobId: null, sel: get().sel && quotes.some(q => q.id === get().sel) ? get().sel : null });
@@ -331,6 +334,7 @@ function keepLocalStages(prev: State, jobId: string, mapped: ReturnType<typeof j
 
 let techProf: any = null;
 let techReviews: any[] = [];
+let baseFilled = false;
 async function refreshTech(get: Get, set: Set) {
   await categories(set, get);
   const extras = extrasDue || !techProf || techProf.verificationStatus !== 'verified';
@@ -343,6 +347,16 @@ async function refreshTech(get: Get, set: Set) {
   set({ techProfileId: prof._id, techVerif, rejectNote: prof.verificationFeedback ?? '', ...(skills.length ? { skills } : {}), ...(prof.serviceAreas?.length ? { areas: prof.serviceAreas } : {}),
     techRating: { avg: prof.ratingAvg ?? 0, count: prof.ratingCount ?? 0, jobs: prof.jobsCompleted ?? 0 }, techSubmittedAt: ts(prof.updatedAt) });
   if (techVerif !== 'verified') return notifications(get, set);
+  // Technicians who registered before locations were saved: use their first service area's centre (no prompt).
+  if (!fromGeo(prof.baseLocation) && prof.serviceAreas?.length && !baseFilled) {
+    baseFilled = true;
+    const a = addressPoint(prof.serviceAreas[0]);
+    if (a) {
+      await api('PATCH', `/technician-profiles/${prof._id}`, { body: { baseLocation: a } }).catch(() => {});
+      prof.baseLocation = { type: 'Point', coordinates: [a.lng, a.lat] };
+    }
+  }
+  set({ techPoint: fromGeo(prof.baseLocation) });
 
   const [open, mine, jobs, wallet, txns, reviews] = await Promise.all([
     api<any[]>('GET', '/repair-requests', { query: { limit: 50 } }),
@@ -354,11 +368,15 @@ async function refreshTech(get: Get, set: Set) {
   ]);
   if (reviews) techReviews = reviews;
   const s = get();
+  const base = fromGeo(prof.baseLocation);
   const board: Job[] = open.map(r => {
-    const u = unpackDesc(r.problemDescription);
-    return { id: r._id, cust: 'Customer', dev: r.brandModel || r.itemType, issue: u.desc, cat: catName(s, r.serviceCategoryId), area: areaOf(r.address ?? ''), km: NaN, ago: agoLabel(ts(r.createdAt)),
+    const u = unpackDesc(r.problemDescription), at = fromGeo(r.location);
+    return { id: r._id, cust: 'Customer', dev: r.brandModel || r.itemType, issue: u.desc, cat: catName(s, r.serviceCategoryId), area: areaOf(r.address ?? ''),
+      km: base && at ? Math.round(distanceKm(base, at) * 10) / 10 : NaN, ago: agoLabel(ts(r.createdAt)),
       photos: r.mediaUrls?.length ?? 0, when: u.prefDate ? `${u.prefDate}${u.prefTime ? `, ${u.prefTime}` : ''}` : 'Flexible', mode: u.mode === 'home' ? 'Home service' : 'Visit shop', media: r.mediaUrls ?? [], address: r.address ?? '' } as Job;
   });
+  // Nearest first; requests without a location keep their order at the end.
+  board.sort((a, b) => (Number.isFinite(a.km) ? a.km : Infinity) - (Number.isFinite(b.km) ? b.km : Infinity));
   const otherQuotes: Record<string, TechQuote> = Object.fromEntries(mine.filter(q => ['pending', 'accepted'].includes(q.status)).map(q => [String(q.repairRequestId?._id ?? q.repairRequestId),
     { labour: q.laborCost ?? 0, parts: q.partsCost ?? 0, days: q.estimatedDays ?? 0, warr: months(q.warrantyDays), note: q.notes ?? '', qid: q._id, status: q.status } as TechQuote]));
   const settled = (j: any) => ['released', 'refunded', 'cash_settled'].includes(j.payment?.status) || j.status === 'cancelled';
@@ -430,6 +448,9 @@ export async function submitRequest(get: Get, set: Set) {
   form.append('problemDescription', packDesc(s));
   form.append('urgency', 'normal');
   form.append('address', s.location.trim());
+  // Where the repair is: the phone's position (asked here, when it's clearly useful), else the address's area.
+  const at = await bestPoint(s.location);
+  if (at) form.append('location', JSON.stringify(at));
   await appendMedia(form, 'media', s.photos);
   const r = await api<any>('POST', '/repair-requests', { form, timeoutMs: 120000 });
   set({ rid: r._id, jobId: null, apptId: null, warrantyId: null, apiQuotes: [], status: JobStatus.Requested, requestAt: ts(r.createdAt), cancelled: false, sel: null, payState: undefined });
@@ -520,7 +541,9 @@ export async function openDispute(get: Get, set: Set, reason: string, evidence: 
 }
 export async function saveAddress(get: Get, address: string) {
   const p = await api<any>('GET', '/customer-profiles/me');
-  await api('PATCH', `/customer-profiles/${p._id}`, { body: { address } });
+  // The home address's area as the customer's default location (no permission prompt needed).
+  const at = addressPoint(address);
+  await api('PATCH', `/customer-profiles/${p._id}`, { body: { address, ...(at ? { location: at } : {}) } });
 }
 
 /* ───────── technician actions ───────── */
@@ -528,11 +551,14 @@ export async function saveAddress(get: Get, address: string) {
 export async function saveTechProfile(get: Get, set: Set, p: { skills?: string[]; areas?: string[]; bio?: string; years?: number }) {
   const cats = await categories(set, get);
   const id = get().techProfileId ?? (await api<any>('GET', '/technician-profiles/me'))._id;
+  // Base location for distances: the phone's position (they choose to share it), else their first service area.
+  const areas = p.areas ?? get().areas, base = p.areas ? await bestPoint(areas[0]) : null;
   await api('PATCH', `/technician-profiles/${id}`, { body: {
+    ...(base ? { baseLocation: base } : {}),
     ...(p.skills ? { serviceCategoryIds: p.skills.map(k => cats[k]).filter(Boolean) } : {}),
     ...(p.areas ? { serviceAreas: p.areas } : {}), ...(p.bio ? { bio: p.bio } : {}), ...(p.years !== undefined ? { experienceYears: p.years } : {}),
   } });
-  set({ techProfileId: id, ...(p.skills ? { skills: p.skills } : {}), ...(p.areas ? { areas: p.areas } : {}) });
+  set({ techProfileId: id, ...(p.skills ? { skills: p.skills } : {}), ...(p.areas ? { areas: p.areas } : {}), ...(base ? { techPoint: base } : {}) });
   extrasDue = true;
 }
 export async function submitVerification(get: Get, set: Set, docs: Media[]) {
@@ -595,10 +621,10 @@ export async function withdraw(get: Get, set: Set, amount: number, account: Payo
 
 export async function markRead(set: Set, ids: string[]) {
   await Promise.all(ids.map(id => api('PATCH', `/notifications/${id}/read`).catch(() => {})));
-  set(p => ({ notifications: p.notifications.map(n => (n.id && ids.includes(n.id) ? { ...n, read: true } : n)) }));
+  set(p => ({ unreadCount: Math.max(0, (p.unreadCount ?? 0) - p.notifications.filter(n => n.id && ids.includes(n.id) && !n.read).length), notifications: p.notifications.map(n => (n.id && ids.includes(n.id) ? { ...n, read: true } : n)) }));
 }
 
 export async function markAllRead(set: Set) {
   await api('PATCH', '/notifications/read-all').catch(() => {});
-  set(p => ({ notifications: p.notifications.map(n => ({ ...n, read: true })) }));
+  set(p => ({ unreadCount: 0, notifications: p.notifications.map(n => ({ ...n, read: true })) }));
 }

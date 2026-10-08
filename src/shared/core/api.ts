@@ -41,6 +41,11 @@ export const setOnUnauthorized = (f: (() => void) | null) => { onUnauthorized = 
 type Opts = { body?: unknown; form?: FormData; query?: Record<string, string | number | boolean | undefined>; timeoutMs?: number };
 
 export async function api<T = any>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, o: Opts = {}): Promise<T> {
+  return (await apiWithMeta<T>(method, path, o)).data;
+}
+
+/** Same as `api`, plus the response's `meta` (pages, totals, unread count). */
+export async function apiWithMeta<T = any>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, o: Opts = {}): Promise<{ data: T; meta: Record<string, any> }> {
   const qs = o.query ? Object.entries(o.query).filter(([, v]) => v !== undefined).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&') : '';
   const headers: Record<string, string> = { Accept: 'application/json' };
   const token = g.__repairhubToken;
@@ -68,7 +73,7 @@ export async function api<T = any>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', 
     const first = Array.isArray(json.errors) ? json.errors[0]?.message ?? json.errors[0] : undefined;
     throw new ApiError(String(first || json.message || `Request failed (${res.status})`).replace(/"/g, ''), res.status, json.errors);
   }
-  return json.data as T;
+  return { data: json.data as T, meta: json.meta ?? {} };
 }
 
 /**
