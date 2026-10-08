@@ -3,15 +3,15 @@ import { router } from 'expo-router';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { AnimatedNumber, FadeIn, Bars, Bold, Btn, C, Card, Chip, H4, IconTile, Muted, Row, Screen, Segments, T } from '../../shared/components/ui';
-import { COMMISSION, EARN, escrowTotal, first, jobs, MIN_PAYOUT, N, net, plural, myDoneJobs } from '../../shared/core/data';
+import { COMMISSION, EARN, escrowTotal, MIN_PAYOUT, N, net, plural, myDoneJobs } from '../../shared/core/data';
 import * as backend from '../../shared/core/backend';
 import { useStore } from '../../shared/core/store';
 import { useWallet } from './common';
 import { ledger } from './payouts/transactions';
-import { PayoutSummary, Withdraw } from './payouts/withdraw';
+import { PayoutSummary } from './payouts/withdraw';
 
 export function Earnings() {
-  const { s, set, toast, notify, refreshNow } = useStore();
+  const { s, refreshNow } = useStore();
   // Fresh wallet, transactions and reviews whenever Earnings opens.
   React.useEffect(() => { backend.wantExtras(); refreshNow(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const w = useWallet();

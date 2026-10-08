@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, Text, View, Alert } from 'react-native';
 import { NotificationList } from '../../shared/components/notifications';
-import { Avatar, C, Bold, Btn, Card, Field, FadeIn, Input, Muted, Screen, Title, Demo, IconTile, Row, T } from '../../shared/components/ui';
+import { Avatar, C, Bold, Btn, Card, Field, FadeIn, Input, Muted, Screen, Title, IconTile, Row, T } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
 import { JobStatus, notesFor } from '../../shared/core/data';
@@ -11,7 +11,7 @@ import { pickMedia } from '../../shared/core/native';
 import { useStore } from '../../shared/core/store';
 import { useLogout } from '../auth/login';
 import { enterApp } from '../auth/session';
-import { Item } from './history';
+
 
 /** Tap-to-change profile photo (camera or library). */
 export function ProfilePhoto({ size = 88 }: { size?: number }) {
@@ -67,12 +67,14 @@ export function CustomerSetup() {
   );
 }
 
+/** One row of the profile menu. */
+const MenuRow = ({ icon, label, sub, to, badge }: { icon: string; label: string; sub?: string; to: string; badge?: React.ReactNode }) => (
+  <Card onPress={() => router.push(to as never)} style={{ paddingVertical: 12 }}><Row><Row style={{ justifyContent: 'flex-start', gap: 12, flex: 1 }}><IconTile glyph={icon} size={38} /><View style={{ flex: 1 }}><T style={{ fontSize: 15, fontWeight: '600' }}>{label}</T>{sub ? <Muted style={{ fontSize: 12 }}>{sub}</Muted> : null}</View></Row>{badge}<T style={{ color: C.mute, marginLeft: 6 }}>›</T></Row></Card>
+);
+
 export function CustomerProfile() {
   const { s } = useStore();
   const logout = useLogout();
-  const Item = ({ icon, label, sub, to, badge }: { icon: string; label: string; sub?: string; to: string; badge?: React.ReactNode }) => (
-    <Card onPress={() => router.push(to as never)} style={{ paddingVertical: 12 }}><Row><Row style={{ justifyContent: 'flex-start', gap: 12, flex: 1 }}><IconTile glyph={icon} size={38} /><View style={{ flex: 1 }}><T style={{ fontSize: 15, fontWeight: '600' }}>{label}</T>{sub ? <Muted style={{ fontSize: 12 }}>{sub}</Muted> : null}</View></Row>{badge}<T style={{ color: C.mute, marginLeft: 6 }}>›</T></Row></Card>
-  );
   return (
     <Screen title="Profile" back={false}>
       <View style={{ alignItems: 'center', marginBottom: 16 }}>
@@ -80,11 +82,11 @@ export function CustomerProfile() {
         <Bold style={{ fontSize: 18, marginTop: 8 }}>{s.fullName}</Bold>
         <Muted>+234 {s.phone}{s.email ? ` · ${s.email}` : ''}</Muted>
       </View>
-      <Item icon="📍" label="Home address" sub={s.custAddress || 'Not set'} to="/cust-setup" />
-      <Item icon="🗓" label="Appointments" sub={s.status >= JobStatus.Accepted && s.status < JobStatus.Released ? `${s.date}, ${s.time}` : 'None upcoming'} to="/appointments" />
-      <Item icon="🛡" label="Warranties" sub={s.status >= JobStatus.Released ? `${shortRef(s.warrantyId, 'WR')} active` : 'None yet'} to="/warranty" />
-      <Item icon="🔔" label="Notifications" to="/alerts" />
-      <Item icon="🔑" label="Change password" to="/new-password" />
+      <MenuRow icon="📍" label="Home address" sub={s.custAddress || 'Not set'} to="/cust-setup" />
+      <MenuRow icon="🗓" label="Appointments" sub={s.status >= JobStatus.Accepted && s.status < JobStatus.Released ? `${s.date}, ${s.time}` : 'None upcoming'} to="/appointments" />
+      <MenuRow icon="🛡" label="Warranties" sub={s.status >= JobStatus.Released ? `${shortRef(s.warrantyId, 'WR')} active` : 'None yet'} to="/warranty" />
+      <MenuRow icon="🔔" label="Notifications" to="/alerts" />
+      <MenuRow icon="🔑" label="Change password" to="/new-password" />
       <Btn title="Log out" variant="ghost" onPress={() => Alert.alert('Log out of RepairHub?', undefined, [{ text: 'Cancel', style: 'cancel' }, { text: 'Log out', style: 'destructive', onPress: logout }])} />
     </Screen>
   );

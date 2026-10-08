@@ -10,7 +10,7 @@ import { isListedModel, MODELS, JobStatus, LIVE_CATEGORIES, repairPhoto, DATES, 
 import { pickMedia, sampleMedia, askNotifications } from '../../shared/core/native';
 import { useStore } from '../../shared/core/store';
 import { EditLink, catNoun, requestErrors } from './common';
-import { Home } from './home';
+
 
 /** Model picker: searchable list for the chosen device type, plus “Other” with a free-text box. */
 export const DEVICE_SHORT: Record<string, string> = { Smartphones: 'Phone', Laptops: 'Laptop', Tablets: 'Tablet', Desktops: 'Desktop', Printers: 'Printer' };

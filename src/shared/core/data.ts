@@ -105,8 +105,7 @@ export type State = {
   rescheduled: number; cancelled: boolean; custWallet: number; custTxns: [string, string, string][];
   // technician offline mode
   simOffline: boolean; queue: QueuedUpdate[]; lastSync: string | null;
-  // payouts: KYC, bank account, PIN and withdrawal history
-  kyc: 'none' | 'verified'; bvnLast4: string; pin: string;
+  // payouts: bank account and withdrawal history
   payoutAccount: null | PayoutAccount;
   withdrawals: Withdrawal[];
   /** Timestamped activity on RH-0841 (Updates log on the job screen). */
@@ -156,7 +155,7 @@ export const initialState = (): State => ({
   otherQuotes: {}, techNote: '', payout: 'weekly', paidOut: 0, txns: [],
   photos: [], progressPhotos: [], claimMedia: [], disputeMedia: [],
   rescheduled: 0, cancelled: false, custWallet: 0, custTxns: [],
-  simOffline: false, queue: [], lastSync: null, jobLog: [], techStage: 0, kyc: 'none', bvnLast4: '', pin: '', payoutAccount: null, withdrawals: [], notifications: [], toast: null,
+  simOffline: false, queue: [], lastSync: null, jobLog: [], techStage: 0, payoutAccount: null, withdrawals: [], notifications: [], toast: null,
   api: null, catIds: {}, rid: null, jobId: null, apptId: null, warrantyId: null, payRef: null, apiQuotes: [], board: [],
 });
 
@@ -280,7 +279,6 @@ export const TECH: Record<string, Tech> = {
 };
 
 /** Quotes on the live request, from technicians (via the API). */
-const PART_WORD: Record<string, string> = { 'screen repair': 'screen', 'battery replacement': 'battery', 'charging port repair': 'charging port', 'paper jam fix': 'roller kit', 'keyboard repair': 'keyboard', 'water damage repair': 'parts after cleaning', repair: 'parts' };
 export function quotes(s: State): Quote[] {
   // Real quotes from technicians on the live request (loaded from the API).
   return s.apiQuotes ?? [];

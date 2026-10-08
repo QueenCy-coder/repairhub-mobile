@@ -6,7 +6,7 @@ import { Avatar, Banner, Bold, Btn, C, Card, Chip, Countdown, Empty, KV, Muted, 
 import * as backend from '../../shared/core/backend';
 import { ESCROW_RELEASE_MS, escrowTotal, first, JobStatus, N, photoCat, plural, repairPhoto, selectedQuote, repairDate, serviceOf } from '../../shared/core/data';
 import { useStore } from '../../shared/core/store';
-import { Warranty } from './warranty';
+
 
 export function Complete() {
   const { s, set, get, run } = useStore();

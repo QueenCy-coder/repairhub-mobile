@@ -17,6 +17,14 @@ export const API_URL = (() => {
   return `http://${host && !/exp\.direct|ngrok/.test(host) ? host : 'localhost'}:5055/api`;
 })();
 
+/**
+ * Wakes the server without waiting for it. The hosted API sleeps when idle and takes about 30 s to start, so the app
+ * calls this on launch: by the time someone has typed their email and password, the server is ready.
+ */
+export function wakeServer() {
+  fetch(`${API_URL.replace(/\/api$/, '')}/health`).catch(() => {});
+}
+
 export class ApiError extends Error {
   constructor(message: string, public status: number, public details?: unknown) { super(message); }
 }

@@ -4,16 +4,14 @@ import { router } from 'expo-router';
 import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CallButton } from '../../shared/components/callSheet';
-import { Banner, Btn, Card, Empty, KV, Muted, Screen, T, InfoTag, FadeIn, Bold, Btns, C, Countdown, Demo, Field, H4, Input, Link, MediaGrid, Row, SuccessMark, Title } from '../../shared/components/ui';
+import { Banner, Btn, Card, Empty, KV, Muted, Screen, T, InfoTag, FadeIn, Bold, Btns, C, Countdown, Field, H4, Input, Link, MediaGrid, Row, SuccessMark, Title } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
-import { ESCROW_RELEASE_MS, COMMISSION, escrowTotal, first, isMine, jobs, JobStatus, LEKKI, masked, nowLabel, custFirst, N, net, jobTitle, photoCat, repairPhoto, todayLabel, intl, custShort, plural, techStages, stageStatus } from '../../shared/core/data';
-import { openDirections, pickMedia, sampleMedia } from '../../shared/core/native';
+import { ESCROW_RELEASE_MS, COMMISSION, escrowTotal, first, isMine, JobStatus, LEKKI, masked, nowLabel, custFirst, N, net, jobTitle, todayLabel, intl, custShort, plural, techStages, stageStatus } from '../../shared/core/data';
+import { openDirections } from '../../shared/core/native';
 import { useStore } from '../../shared/core/store';
 import { customerSpot } from '../../shared/core/trackRoute';
-import { Confirmed } from '../customer/booking';
 import { payLabel } from '../customer/common';
-import { Waiting } from '../customer/quotes';
-import { JobPhoto, JobStages, OfflineStrip, shortIssue } from './common';
+import { JobPhoto, JobStages, OfflineStrip } from './common';
 
 export function BookingRequest() {
   const { s, set, notify, online } = useStore();
@@ -47,7 +45,7 @@ export function BookingRequest() {
 /* ───────── T-08 Update Repair Status (Figma) · offline-capable ───────── */
 
 export function Job() {
-  const { s, set, techUpdate, online, toast } = useStore();
+  const { s, techUpdate, online, toast } = useStore();
   const [note, setNote] = React.useState('');
   const [tried, setTried] = React.useState(false);
   const [open, setOpen] = React.useState<number | null>(null);
@@ -68,7 +66,6 @@ export function Job() {
   const needPhoto = false; // the API has no job photos yet, so completion only needs the note
   // While a reported problem is under review the job is frozen on the server (no status updates).
   const frozen = !!s.dispute && s.dispute.status !== 'Resolved';
-  const shortIssue = s.desc.split(/[,.]/)[0].trim();
 
   const save = () => {
     if (paused) { techUpdate({ kind: 'status', stage: local.stage, note: note || 'Part arrived, repair resumed', photos }); setNote(''); return; }

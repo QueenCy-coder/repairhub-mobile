@@ -1,13 +1,12 @@
 // Withdrawing earnings.
 import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
-import { Bold, Btn, C, Card, Chip, Empty, FadeIn, Field, IconTile, Input, KV, Link, Muted, Opt, Row, Screen, T, Timeline, Stepper, Title } from '../../../shared/components/ui';
-import { walletBase, escrowTotal, isMine, JobStatus, net, grouped, nextPayoutDay, INSTANT_FEE, maskAcct, MIN_PAYOUT, N, nowLabel, sessionId, TODAY, Withdrawal } from '../../../shared/core/data';
+import { Alert, Text, View } from 'react-native';
+import { Bold, Btn, C, Card, Chip, Empty, Field, Input, KV, Link, Muted, Row, Screen, T, Stepper, Title } from '../../../shared/components/ui';
+import { walletBase, grouped, maskAcct, MIN_PAYOUT, N } from '../../../shared/core/data';
 import * as backend from '../../../shared/core/backend';
 import { useStore } from '../../../shared/core/store';
 import { ledger } from './transactions';
-import { PinBoxes } from './verification';
 
 /** Wallet balance available to withdraw (from the API). */
 export function useAvailable() {

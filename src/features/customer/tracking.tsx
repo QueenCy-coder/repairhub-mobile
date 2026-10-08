@@ -4,7 +4,7 @@ import React from 'react';
 import { Pressable, View } from 'react-native';
 import { CallButton } from '../../shared/components/callSheet';
 import { TrackMap } from '../../shared/components/trackMap';
-import { Avatar, Banner, Bold, Btn, C, Card, Demo, Empty, H4, Link, MediaGrid, Muted, Row, Screen, Timeline, Field, Input, KV, Opt } from '../../shared/components/ui';
+import { Avatar, Banner, Bold, Btn, C, Card, Empty, H4, Link, MediaGrid, Muted, Row, Screen, Timeline, Field, Input, KV, Opt } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
 import { intl, escrowTotal, first, JobStatus, LEKKI, N, selectedQuote, trackSteps, validUntil } from '../../shared/core/data';

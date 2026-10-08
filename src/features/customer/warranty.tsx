@@ -1,14 +1,14 @@
 // Warranty card (QR) and warranty claims.
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
-import qrcode from 'qrcode-generator';
+import makeQr from 'qrcode-generator';
 import React from 'react';
 import { View, Pressable, Alert, Text } from 'react-native';
-import { Bold, C, Muted, Row, Btn, Card, CatTile, Chip, KV, Link, Screen, T, Field, Input, MediaGrid, Banner, SuccessMark, Timeline, Title, Demo } from '../../shared/components/ui';
+import { Bold, C, Muted, Row, Btn, Card, CatTile, Chip, KV, Link, Screen, T, Field, Input, Banner, SuccessMark, Timeline, Title } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
 import { JobStatus, myPastRequests, repairDate, selectedQuote, shortDate, State, validUntil, warrantyEnd, plural, first } from '../../shared/core/data';
-import { copyText, shareText, pickFiles, pickMedia } from '../../shared/core/native';
+import { copyText, shareText } from '../../shared/core/native';
 import { useStore } from '../../shared/core/store';
 
 /** Warranty data for the live repair or a past one. */
@@ -29,7 +29,7 @@ export function warrantyOf(s: State, id?: string) {
 /** QR code drawn with plain views (no SVG dependency). */
 export function QR({ value, size = 140 }: { value: string; size?: number }) {
   const rows = React.useMemo(() => {
-    const q = qrcode(0, 'M'); q.addData(value); q.make();
+    const q = makeQr(0, 'M'); q.addData(value); q.make();
     const n = q.getModuleCount();
     return Array.from({ length: n }, (_, r) => Array.from({ length: n }, (_, c) => q.isDark(r, c)));
   }, [value]);

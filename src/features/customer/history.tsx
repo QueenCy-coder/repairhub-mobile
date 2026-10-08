@@ -8,7 +8,7 @@ import { shortRef } from '../../shared/core/api';
 import { escrowTotal, JobStatus, repairDate, selectedQuote, shortDate, State, statusLabel, validUntil, warrantyEnd, myPastRequests, plural, N } from '../../shared/core/data';
 import { useStore } from '../../shared/core/store';
 import { activeRoute } from './common';
-import { Warranty } from './warranty';
+
 
 /** One row of the customer's history: the live repair (RH-0841) or a past one. */
 export type Item = {

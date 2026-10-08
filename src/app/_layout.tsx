@@ -5,10 +5,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, AppState, Easing, Platform, Text, View } from 'react-native';
-import { consumeExternal, onLaunch, playLaunch } from '../shared/core/lifecycle';
+import { consumeExternal, onLaunch } from '../shared/core/lifecycle';
 import { Image } from 'expo-image';
 import { AlertHost } from '../shared/components/alertHost';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { wakeServer } from '../shared/core/api';
 import { StoreProvider, useStore } from '../shared/core/store';
 import { C } from '../shared/components/ui';
 
@@ -79,6 +80,8 @@ function LaunchSplash() {
 
 function Root() {
   const { ready } = useStore();
+  // Start waking the API straight away (it sleeps when idle).
+  useEffect(() => { wakeServer(); }, []);
   useEffect(() => {
     // Permission is asked in context (after a request or registration), not on first launch — see askNotifications().
     // Tapping a notification opens the relevant screen.

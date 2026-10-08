@@ -1,11 +1,13 @@
 // Bank account for payouts.
 import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { Text, View } from 'react-native';
-import { Banner, Bold, Btn, C, Card, Chip, Empty, Field, Input, Link, mono, Muted, Opt, Row, Screen, T } from '../../../shared/components/ui';
+import { View } from 'react-native';
+import { Bold, Btn, Card, Field, Input, Link, mono, Muted, Opt, Row, Screen, T } from '../../../shared/components/ui';
 import { BANKS, maskAcct, PayoutAccount } from '../../../shared/core/data';
 import { useStore } from '../../../shared/core/store';
-import { PinBoxes, resolveName, upper } from './verification';
+
+/** Account names are shown in capitals, as banks print them. */
+const upper = (n: string) => n.trim().toUpperCase();
 
 export function PayoutAccountScreen() {
   const { s, set, toast, notify } = useStore();

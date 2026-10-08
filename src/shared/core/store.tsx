@@ -61,7 +61,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const sRef = useRef(s);
   sRef.current = s;
   const get = useCallback(() => sRef.current, []);
-  const set = useCallback((p: Patch) => setS(prev => { const next = { ...prev, ...(typeof p === 'function' ? p(prev) : p) }; sRef.current = next; return next; }), []);
+  // Applied to the latest state right away (not when React next renders), so code that reads `get()` straight after
+  // an update sees it: e.g. login → load profile → choose the screen from the verification status.
+  const set = useCallback((p: Patch) => {
+    const prev = sRef.current, next = { ...prev, ...(typeof p === 'function' ? p(prev) : p) };
+    sRef.current = next;
+    setS(next);
+  }, []);
+
+  /** Swap in a whole new state (saved data, signed out). */
+  const replace = useCallback((next: State) => { sRef.current = next; setS(next); }, []);
 
   const toast = useCallback((msg: string) => {
     set({ toast: msg });
@@ -82,11 +91,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // Browser previews store picks as blob: URLs, which die on reload. Drop them instead of showing broken thumbnails.
         const alive = (list?: { uri: string }[]) => (list ?? []).filter(m => !m.uri.startsWith('blob:'));
         if (saved.api?.token) setToken(saved.api.token);
-        setS({ ...initialState(), ...saved, photos: alive(saved.photos), progressPhotos: alive(saved.progressPhotos), claimMedia: alive(saved.claimMedia), disputeMedia: alive(saved.disputeMedia), toast: null });
+        replace({ ...initialState(), ...saved, photos: alive(saved.photos), progressPhotos: alive(saved.progressPhotos), claimMedia: alive(saved.claimMedia), disputeMedia: alive(saved.disputeMedia), toast: null });
       })
       .catch(() => {})
       .finally(() => setReady(true));
-  }, []);
+  }, [replace]);
 
   // Persist (debounced).
   useEffect(() => {
@@ -105,12 +114,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setOnUnauthorized(() => {
       setToken(null);
-      setS({ ...initialState(), toast: 'Your session has expired. Please log in again.' });
+      replace({ ...initialState(), toast: 'Your session has expired. Please log in again.' });
       if (router.canDismiss()) router.dismissAll();
       router.replace('/');
     });
     return () => setOnUnauthorized(null);
-  }, []);
+  }, [replace]);
 
   /* ───── Server sync: poll the API while signed in ───── */
   const seen = useRef<Set<string> | null>(null);
@@ -209,7 +218,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [online, s.queue.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const reset = useCallback(() => { setToken(null); setS(initialState()); AsyncStorage.removeItem(KEY).catch(() => {}); }, []);
+  const reset = useCallback(() => { setToken(null); replace(initialState()); AsyncStorage.removeItem(KEY).catch(() => {}); }, [replace]);
 
   return <Ctx.Provider value={{ s, set, get, toast, notify, techUpdate, run, refreshNow, busy, online, deviceOnline, ready, reset, live }}>{children}</Ctx.Provider>;
 }

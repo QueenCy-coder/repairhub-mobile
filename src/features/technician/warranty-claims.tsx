@@ -39,10 +39,12 @@ export function TechClaim() {
       setOpen(null); setNote(''); setTried(false); load();
     }
   };
-  const Item = ({ r }: { r: ClaimRow }) => {
+  // A render function, not an inner component: an inner component is re-created on every keystroke, which would
+  // make the note box lose focus after each letter.
+  const renderClaim = (r: ClaimRow) => {
     const isOpen = open === r.claim._id, waiting = r.claim.status === 'open';
     return (
-      <FadeIn>
+      <FadeIn key={r.claim._id}>
         <Card tone={waiting ? 'hi' : undefined}>
           <Row style={{ alignItems: 'flex-start', gap: 12 }}>
             <CatTile model={r.job.dev} cat={r.job.cat} size={44} />
@@ -71,8 +73,8 @@ export function TechClaim() {
   return (
     <Screen title="Warranty claims">
       {pending.length ? <Banner tone="warn" icon="!">{`${pending.length === 1 ? 'A customer is' : `${pending.length} customers are`} waiting for your response.`}</Banner> : null}
-      {pending.map(r => <Item key={r.claim._id} r={r} />)}
-      {done.length ? <><H4>Earlier claims</H4>{done.map(r => <Item key={r.claim._id} r={r} />)}</> : null}
+      {pending.map(renderClaim)}
+      {done.length ? <><H4>Earlier claims</H4>{done.map(renderClaim)}</> : null}
       <Card tone="soft"><KV k="Warranty work" v="Free for the customer" /><Muted style={{ fontSize: 12 }}>Fix the same fault at no cost, or explain clearly why it isn’t covered.</Muted></Card>
     </Screen>
   );

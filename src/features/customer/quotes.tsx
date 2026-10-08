@@ -4,12 +4,11 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { Alert, Text, View, Pressable, ScrollView } from 'react-native';
-import { FadeIn, Btn, C, Card, Countdown, Demo, KV, Muted, Pulse, Screen, Title, Avatar, Bold, Btns, Chip, Chips, Rating, Row, T, Banner, Empty, CatTile, H4 } from '../../shared/components/ui';
+import { FadeIn, Btn, C, Card, Countdown, KV, Muted, Pulse, Screen, Title, Avatar, Bold, Btns, Chip, Chips, Rating, Row, T, Banner, Empty, CatTile, H4 } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
 import { first, JobStatus, plural, quotes, N, selectedQuote, Sort, CERT_IMG, RECENT_WORK, repairPhoto, techProfile, serviceOf, agoLabel } from '../../shared/core/data';
 import { useStore } from '../../shared/core/store';
-import { Book } from './booking';
 import { Viewer, catNoun } from './common';
 
 

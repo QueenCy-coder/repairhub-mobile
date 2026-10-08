@@ -2,16 +2,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { Pressable, Text, View, Image, Alert } from 'react-native';
-import { InfoTag, MiniSteps, StatusPill, Banner, FadeIn, Btn, Btns, C, Card, Chip, Chips, Demo, Empty, Input, Link, Muted, Row, Screen, T, Title, Avatar, Bold, Countdown, H4, KV, MediaGrid, CatTile, Field, NumberChoice } from '../../shared/components/ui';
-import { techStats, escrowTotal, first, isMine, jobs, JobStatus, LIVE_CATEGORIES, availableJobs, jobTitle, typicalPrice, todayLabel, shortDate, custShort, myQuote, N, net, plural, jobById, repairPhoto, COMMISSION, grouped, myPastRequests } from '../../shared/core/data';
+import { Pressable, Text, View, Alert } from 'react-native';
+import { InfoTag, MiniSteps, StatusPill, Banner, FadeIn, Btn, Btns, C, Card, Chip, Chips, Empty, Input, Link, Muted, Row, Screen, T, Title, Avatar, Bold, H4, KV, MediaGrid, CatTile, Field, NumberChoice } from '../../shared/components/ui';
+import { techStats, escrowTotal, isMine, JobStatus, LIVE_CATEGORIES, availableJobs, jobTitle, typicalPrice, todayLabel, custShort, myQuote, N, net, plural, jobById, COMMISSION, grouped } from '../../shared/core/data';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
 import { useStore } from '../../shared/core/store';
+import { ACTIVE_STEPS, JobPhoto, OfflineStrip, activeStep, shortIssue, useWallet } from './common';
 
 /** Display reference for a job: the live job's request, or an open request's id. */
 export const refOf = (id: string, rid?: string | null) => (id === 'RH-0841' ? shortRef(rid) : id.startsWith('RH-') ? id : shortRef(id));
-import { ACTIVE_STEPS, JobPhoto, OfflineStrip, activeStep, shortIssue, useWallet } from './common';
 
 export function Jobs() {
   const { s, set } = useStore();
