@@ -4,6 +4,8 @@ A single-file catalogue of **every screen in the RepairHub mobile app** (Expo / 
 
 It was extracted directly from the app in this repository. Each screen entry describes what the user sees, what they can do, where they came from, and where each action leads.
 
+**References:** Figma design (Group 9 — Repair Hub): https://www.figma.com/design/orAUZeW4pHVGIFejPLTjWP/Group-9-Project---Repair-Hub?node-id=0-1&t=yc179zs6Mfv0l5IX-1 · Backend API: https://repairhub-api-1.onrender.com/api (Swagger: https://repairhub-api-1.onrender.com/api-docs)
+
 **Contents**
 
 1. [Screen Reference (overview)](#screen-reference-overview) — roles, navigation, status model, glossary, and the full 50-screen inventory
@@ -11,9 +13,7 @@ It was extracted directly from the app in this repository. Each screen entry des
 3. [Customer Screens](#customer-screens) — 25 screens
 4. [Technician Screens](#technician-screens) — 19 screens
 
----
-
-## Screen Reference (overview)
+---## Screen Reference (overview)
 
 This pack is a plain-language catalogue of **every screen in the RepairHub mobile app**, written so technical writers can document the product without reading the source code.
 
@@ -39,6 +39,12 @@ Every screen entry follows the same template:
 - **On screen** — the visible content, top to bottom
 - **Actions** — what each control does and where it goes
 - **States & edge cases** — empty, error, offline, and other variations
+
+### References for technical writers
+
+- **Figma design (Group 9 — Repair Hub):** https://www.figma.com/design/orAUZeW4pHVGIFejPLTjWP/Group-9-Project---Repair-Hub?node-id=0-1&t=yc179zs6Mfv0l5IX-1
+- **Backend API:** https://repairhub-api-1.onrender.com/api · **Swagger docs:** https://repairhub-api-1.onrender.com/api-docs · **Backend repo:** https://github.com/Code4Frankie/RepairHub_api
+- **Screen index:** this document, plus `screens.csv` (machine-readable inventory).
 
 ### Roles
 
