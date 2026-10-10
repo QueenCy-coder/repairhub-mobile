@@ -1,0 +1,1582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RepairHub Mobile — Complete Screen Reference</title>
+<style>
+  :root { --ink:#101828; --text:#3d4350; --mute:#667085; --line:#e4e7ec; --primary:#175cd3; --soft:#eef4ff; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#f6f8fb; color:var(--text);
+         font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; background:#fff; padding: 48px 56px 80px;
+          box-shadow: 0 1px 3px rgba(16,24,40,.08); }
+  h1 { color:var(--ink); font-size: 30px; line-height:1.25; margin:0 0 8px; }
+  h2 { color:var(--ink); font-size: 22px; margin:40px 0 12px; padding-top:16px; border-top:2px solid var(--line); }
+  h3 { color:var(--ink); font-size: 17px; margin:26px 0 8px; }
+  h4 { color:var(--ink); font-size: 15px; margin:20px 0 6px; }
+  p { margin: 10px 0; }
+  a { color: var(--primary); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { background:#f2f4f7; padding:1px 5px; border-radius:4px; font-size: 13px;
+         font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color:#344054; }
+  hr { border:0; border-top:1px solid var(--line); margin:32px 0; }
+  blockquote { margin:14px 0; padding:10px 16px; background:var(--soft); border-left:4px solid var(--primary); border-radius:0 8px 8px 0; color:var(--text); }
+  table { border-collapse: collapse; width:100%; margin:14px 0; font-size:14px; }
+  th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:#f9fafb; color:var(--ink); }
+  tr:nth-child(even) td { background:#fcfcfd; }
+  ul, ol { margin:10px 0; padding-left:22px; }
+  li { margin:3px 0; }
+  .toc { background:#f9fafb; border:1px solid var(--line); border-radius:10px; padding:14px 20px; margin:24px 0 8px; }
+  .toc strong { color:var(--ink); }
+  .toc a { display:block; padding:3px 0; }
+  @media print {
+    body { background:#fff; }
+    .wrap { box-shadow:none; max-width:none; padding:0 8mm; }
+    h2 { page-break-after: avoid; }
+    h3 { page-break-after: avoid; }
+    table, blockquote { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+<h1 id="repairhub-mobile-complete-screen-reference">RepairHub Mobile — Complete Screen Reference</h1>
+<p>A single-file catalogue of <strong>every screen in the RepairHub mobile app</strong> (Expo / React Native + TypeScript), written so technical writers can document the product without reading the source code.</p>
+<p>It was extracted directly from the app in this repository. Each screen entry describes what the user sees, what they can do, where they came from, and where each action leads.</p>
+<p><strong>Contents</strong></p>
+<ol>
+<li><a href="#screen-reference-overview">Screen Reference (overview)</a> — roles, navigation, status model, glossary, and the full 50-screen inventory</li>
+<li><a href="#entry--authentication">Entry &amp; Authentication</a> — 6 screens</li>
+<li><a href="#customer-screens">Customer Screens</a> — 25 screens</li>
+<li><a href="#technician-screens">Technician Screens</a> — 19 screens</li>
+</ol>
+<hr>
+<h2 id="screen-reference-overview">Screen Reference (overview)</h2>
+<p>This pack is a plain-language catalogue of <strong>every screen in the RepairHub mobile app</strong>, written so technical writers can document the product without reading the source code.</p>
+<p>It was extracted directly from the app in this repository (Expo / React Native + TypeScript, Expo Router). Each screen entry describes what the user sees, what they can do, where they came from, and where each action leads.</p>
+<h3 id="how-to-use-this-pack">How to use this pack</h3>
+<table><thead><tr><th>File</th><th>What's in it</th></tr></thead><tbody>
+<tr><td><code>README.md</code> (this file)</td><td>Roles, navigation model, status model, glossary, and the full screen inventory</td></tr>
+<tr><td><code>01-entry-and-auth.md</code></td><td>Launch, welcome, role picker, sign up, log in, password screens</td></tr>
+<tr><td><code>02-customer.md</code></td><td>All customer screens (request → quotes → booking → tracking → warranty)</td></tr>
+<tr><td><code>03-technician.md</code></td><td>All technician screens (registration → jobs → job progress → earnings)</td></tr>
+<tr><td><code>screens.csv</code></td><td>The same inventory as a spreadsheet (one row per screen)</td></tr>
+</tbody></table>
+<p>Every screen entry follows the same template:</p>
+<ul>
+<li><strong>Route</strong> — the URL/path the screen is addressed at</li>
+<li><strong>Source</strong> — the file and exported component in the code (for cross-checking)</li>
+<li><strong>Role</strong> — Customer, Technician, or Both</li>
+<li><strong>Purpose</strong> — one-sentence summary</li>
+<li><strong>How you get there</strong> — entry points</li>
+<li><strong>On screen</strong> — the visible content, top to bottom</li>
+<li><strong>Actions</strong> — what each control does and where it goes</li>
+<li><strong>States &amp; edge cases</strong> — empty, error, offline, and other variations</li>
+</ul>
+<h3 id="roles">Roles</h3>
+<p>The app has two roles, chosen at sign-up and stored per account:</p>
+<ul>
+<li><strong>Customer</strong> — requests a repair, receives quotes, books and pays into escrow, tracks the job, confirms completion, and holds a warranty.</li>
+<li><strong>Technician</strong> — registers and is verified, browses jobs, sends quotes, accepts bookings, updates repair status, and withdraws earnings.</li>
+</ul>
+<p>One device can hold both roles (a demo affordance), but the tab bar changes based on the signed-in role. Customers see <strong>Home · My Repairs · Profile</strong>; technicians see <strong>Home · Jobs · Earnings · Profile</strong>.</p>
+<h3 id="navigation-model">Navigation model</h3>
+<ul>
+<li>The app uses <strong>Expo Router</strong>; every file under <code>src/app/</code> is a route, and <code>_layout.tsx</code> files define the navigators.</li>
+<li>Screens live in two nested tab groups: <code>(customer)</code> and <code>(tech)</code>. The parentheses mean the folder name is not part of the URL, so <code>(customer)/home.tsx</code> is simply <code>/home</code>.</li>
+<li>Most route files are one line and simply point at a feature screen in <code>src/features/</code>. The docs reference the feature file because that is where the behaviour lives.</li>
+<li>The root stack (<code>src/app/_layout.tsx</code>) shows a blue launch splash on every app open and role switch, then lands on the user's home screen. A toast and (on web) dialogs are rendered here.</li>
+<li>Full-screen "moment" screens (<code>confirmed</code>, <code>review-done</code>, <code>job-done</code>, <code>withdraw-done</code>) disable the back gesture and animate up from the bottom.</li>
+</ul>
+<h3 id="job-status-model">Job status model</h3>
+<p>The app tracks a repair through one shared status sequence (<code>JobStatus</code> in <code>src/shared/core/data.ts</code>). Technical writers should use these names consistently:</p>
+<table><thead><tr><th>Value</th><th>Status</th><th>Customer-facing label</th></tr></thead><tbody>
+<tr><td>-1</td><td>No request</td><td>No request</td></tr>
+<tr><td>0</td><td>Requested</td><td>Waiting for quotes</td></tr>
+<tr><td>1</td><td>Quoted</td><td>Quotes received</td></tr>
+<tr><td>2</td><td>Booked</td><td>Booked · awaiting technician</td></tr>
+<tr><td>3</td><td>Accepted</td><td>Booked</td></tr>
+<tr><td>4</td><td>On the way</td><td>Technician on the way <em>or</em> Device dropped off (depends on service type)</td></tr>
+<tr><td>5</td><td>In progress</td><td>Repair in progress (or <strong>Awaiting parts</strong> if paused)</td></tr>
+<tr><td>6</td><td>Completed</td><td>Repair completed</td></tr>
+<tr><td>7</td><td>Released</td><td>Completed · paid</td></tr>
+</tbody></table>
+<p>Supporting states: <strong>Cancelled</strong> (request cancelled before/at booking), <strong>Disputed</strong> (a problem was reported and escrow is frozen), and <strong>Verification</strong> states for technicians (<code>new</code>, <code>pending</code>, <code>rejected</code>, <code>verified</code>).</p>
+<h3 id="key-domain-rules-terms">Key domain rules &amp; terms</h3>
+<ul>
+<li><strong>Escrow</strong> — customer payments are held by RepairHub and only released when the customer confirms the repair, or automatically <strong>72 hours</strong> after the technician marks it complete.</li>
+<li><strong>Commission</strong> — RepairHub deducts <strong>10%</strong> from each job before crediting the technician's wallet.</li>
+<li><strong>Minimum withdrawal</strong> — <strong>₦1,000</strong>.</li>
+<li><strong>Quotes</strong> — technicians send one binding quote per request (labour + parts + repair time + warranty). Customers compare price, rating, speed and warranty. Quotes are valid for <strong>7 days</strong> unless noted.</li>
+<li><strong>Home service vs workshop</strong> — the customer chooses either a home visit or dropping the device at the technician's workshop. (There is no separate travel fee; technicians include travel in their quote.)</li>
+<li><strong>Warranty</strong> — starts on the repair date and covers the parts replaced and work done on that repair. Claims are raised in the app; the technician has 48 hours to respond, otherwise RepairHub decides within 48 hours.</li>
+<li><strong>Live categories</strong> — only <strong>Smartphones, Laptops, Tablets, Desktops, Printers</strong> are live at launch (Lagos). TVs, Refrigerators and other groups show as "Coming soon".</li>
+<li><strong>Money format</strong> — Nigerian Naira, e.g. <code>₦18,700</code>.</li>
+</ul>
+<h3 id="screen-inventory">Screen inventory</h3>
+<p>50 screens total, grouped by area and ordered roughly as a user meets them. See the area files for detail on each.</p>
+<h4 id="entry-authentication-6">Entry &amp; authentication (6)</h4>
+<table><thead><tr><th>#</th><th>Screen</th><th>Route</th><th>Role</th></tr></thead><tbody>
+<tr><td>1</td><td>Welcome / Onboarding</td><td><code>/</code></td><td>Both</td></tr>
+<tr><td>2</td><td>Role picker</td><td><code>/role</code></td><td>Both</td></tr>
+<tr><td>3</td><td>Sign up</td><td><code>/signup</code></td><td>Both</td></tr>
+<tr><td>4</td><td>Log in</td><td><code>/login</code></td><td>Both</td></tr>
+<tr><td>5</td><td>Forgot password</td><td><code>/forgot-password</code></td><td>Both</td></tr>
+<tr><td>6</td><td>Change password</td><td><code>/new-password</code></td><td>Both</td></tr>
+</tbody></table>
+<h4 id="customer-25">Customer (25)</h4>
+<table><thead><tr><th>#</th><th>Screen</th><th>Route</th><th>Purpose</th></tr></thead><tbody>
+<tr><td>7</td><td>Home</td><td><code>/home</code></td><td>Dashboard: active repair, categories, quick requests, search</td></tr>
+<tr><td>8</td><td>Search / find a technician</td><td><code>/search</code></td><td>Browse verified technicians</td></tr>
+<tr><td>9</td><td>Technician profile</td><td><code>/tech-profile</code></td><td>A technician's public profile and their quote</td></tr>
+<tr><td>10</td><td>Request a repair — step 1</td><td><code>/new-request</code></td><td>Device, model, problem description, photos</td></tr>
+<tr><td>11</td><td>Request a repair — step 2</td><td><code>/request-details</code></td><td>Location, date, time, service preference</td></tr>
+<tr><td>12</td><td>Review request — step 3</td><td><code>/review-request</code></td><td>Confirm and submit the request</td></tr>
+<tr><td>13</td><td>Waiting for quotes</td><td><code>/waiting</code></td><td>Live status while technicians respond</td></tr>
+<tr><td>14</td><td>Compare quotes</td><td><code>/compare</code></td><td>Side-by-side comparison, sort and select</td></tr>
+<tr><td>15</td><td>Book technician</td><td><code>/book</code></td><td>Confirm appointment and price</td></tr>
+<tr><td>16</td><td>Checkout / pay (escrow)</td><td><code>/pay</code></td><td>Pay by card (Paystack) or cash</td></tr>
+<tr><td>17</td><td>Booking confirmed</td><td><code>/confirmed</code></td><td>Success moment with booking summary</td></tr>
+<tr><td>18</td><td>Appointments</td><td><code>/appointments</code></td><td>Manage upcoming appointment, reschedule, cancel</td></tr>
+<tr><td>19</td><td>Track repair</td><td><code>/track</code></td><td>Timeline, map, progress photos, report a problem</td></tr>
+<tr><td>20</td><td>Report an issue</td><td><code>/report</code></td><td>Freeze escrow and raise a dispute</td></tr>
+<tr><td>21</td><td>Check &amp; confirm repair</td><td><code>/complete</code></td><td>Release payment, optional quick checks</td></tr>
+<tr><td>22</td><td>Rate your repair</td><td><code>/review</code></td><td>Star rating, tags, written review</td></tr>
+<tr><td>23</td><td>Review submitted</td><td><code>/review-done</code></td><td>Success moment</td></tr>
+<tr><td>24</td><td>Warranty info</td><td><code>/warranty</code></td><td>Warranty card, QR code, coverage, terms</td></tr>
+<tr><td>25</td><td>Submit warranty claim</td><td><code>/claim</code></td><td>Raise a warranty claim</td></tr>
+<tr><td>26</td><td>Claim submitted / track claim</td><td><code>/claim-submitted</code></td><td>Claim status</td></tr>
+<tr><td>27</td><td>Set up account / home address</td><td><code>/cust-setup</code></td><td>Profile photo + address</td></tr>
+<tr><td>28</td><td>Profile</td><td><code>/profile</code></td><td>Customer profile tab and menu</td></tr>
+<tr><td>29</td><td>Repair history</td><td><code>/repairs</code></td><td>All repairs, filterable</td></tr>
+<tr><td>30</td><td>Repair details</td><td><code>/repair</code></td><td>Details of one repair</td></tr>
+<tr><td>31</td><td>Notifications</td><td><code>/alerts</code></td><td>Customer notification list</td></tr>
+</tbody></table>
+<h4 id="technician-19">Technician (19)</h4>
+<table><thead><tr><th>#</th><th>Screen</th><th>Route</th><th>Purpose</th></tr></thead><tbody>
+<tr><td>32</td><td>Service profile (registration)</td><td><code>/tech-register</code></td><td>Skills, areas, ID and certificate upload</td></tr>
+<tr><td>33</td><td>Verification status</td><td><code>/verification</code></td><td>Application progress and review state</td></tr>
+<tr><td>34</td><td>Home dashboard</td><td><code>/tech-home</code></td><td>Earnings, stats, today's job, nearby jobs</td></tr>
+<tr><td>35</td><td>Notifications</td><td><code>/tech-alerts</code></td><td>Technician notification list</td></tr>
+<tr><td>36</td><td>Jobs board</td><td><code>/jobs</code></td><td>Available / Active / Completed job tabs</td></tr>
+<tr><td>37</td><td>Job details</td><td><code>/job-details</code></td><td>One request's full details</td></tr>
+<tr><td>38</td><td>Send / revise quote</td><td><code>/send-quote</code></td><td>Compose a quote</td></tr>
+<tr><td>39</td><td>Booking request</td><td><code>/booking-request</code></td><td>Accept or decline a booking</td></tr>
+<tr><td>40</td><td>Update repair status</td><td><code>/job</code></td><td>Move the job through stages, add notes</td></tr>
+<tr><td>41</td><td>Repair completed</td><td><code>/job-done</code></td><td>Success moment after marking complete</td></tr>
+<tr><td>42</td><td>Earnings</td><td><code>/earnings</code></td><td>Wallet, charts, recent transactions</td></tr>
+<tr><td>43</td><td>Profile</td><td><code>/me</code></td><td>Technician profile tab and menu</td></tr>
+<tr><td>44</td><td>Services &amp; coverage</td><td><code>/services</code></td><td>Toggle services and service areas</td></tr>
+<tr><td>45</td><td>Reviews</td><td><code>/reviews</code></td><td>Rating summary and review list</td></tr>
+<tr><td>46</td><td>Warranty claims</td><td><code>/tech-claim</code></td><td>Respond to customer warranty claims</td></tr>
+<tr><td>47</td><td>Payout account</td><td><code>/payout-account</code></td><td>Add or change the bank account</td></tr>
+<tr><td>48</td><td>Withdraw</td><td><code>/withdraw</code></td><td>Request a withdrawal</td></tr>
+<tr><td>49</td><td>Withdrawal receipt</td><td><code>/withdraw-done</code></td><td>Withdrawal status and receipt</td></tr>
+<tr><td>50</td><td>Transaction details</td><td><code>/transaction</code></td><td>A single wallet transaction / receipt</td></tr>
+</tbody></table>
+<h3 id="design-system-reference">Design system reference</h3>
+<p>Screens are built from a shared component library in <code>src/shared/components/ui.tsx</code>. Recurring building blocks a writer will see named across many screens:</p>
+<ul>
+<li><strong>Screen</strong> — the standard page scaffold (title bar with optional back button, right-side action, scrollable body, sticky footer for primary buttons).</li>
+<li><strong>Card</strong> — rounded content panel; tones include <code>soft</code>, <code>blue</code>, <code>strong</code>, <code>hi</code>, <code>selected</code>, <code>dash</code>.</li>
+<li><strong>Btn / Btns</strong> — primary, secondary (<code>sec</code>), ghost, and danger buttons; <code>small</code> variant exists.</li>
+<li><strong>Field / Input / Opt / Chip(s) / ChoiceOrType / NumberChoice</strong> — form controls.</li>
+<li><strong>KV</strong> — key/value row used in detail cards.</li>
+<li><strong>Timeline / Stepper / MiniSteps / Segments</strong> — progress and tabbing affordances.</li>
+<li><strong>Avatar, Badge, StatusPill, Chip, Banner, Empty, SuccessMark, Countdown, MediaGrid, Thumb, Puls</strong> — status and feedback elements.</li>
+</ul>
+<h3 id="known-limitations-to-note-in-documentation">Known limitations to note in documentation</h3>
+<p>These are genuine product limitations carried in the code and README; document behaviour as-is:</p>
+<ul>
+<li>Self-service <strong>password reset</strong> does not exist yet (<code>/forgot-password</code> explains to contact support).</li>
+<li>Preferred date/time and service type are stored inside the request's problem description on the backend.</li>
+<li>Technician progress/completion <strong>photos</strong> are not uploaded to the API.</li>
+<li>Review <strong>replies</strong> are not available.</li>
+<li>The <strong>"Technician on the way"</strong> map step maps to the <code>diagnosing</code> status on the backend.</li>
+<li>After a dispute is resolved with a full refund, the job becomes <code>cancelled</code> but the repair request stays <code>in_progress</code> on the backend.</li>
+</ul>
+<h2 id="entry-authentication">Entry &amp; Authentication</h2>
+<p>Screens that appear before (or around) being signed in. Shared by both roles.</p>
+<hr>
+<h3 id="1-welcome-onboarding">1. Welcome / Onboarding</h3>
+<ul>
+<li><strong>Route:</strong> <code>/</code> (<code>src/app/index.tsx</code> → <code>Onboarding</code>)</li>
+<li><strong>Source:</strong> <code>src/features/auth/welcome.tsx</code> → <code>Onboarding</code></li>
+<li><strong>Role:</strong> Both</li>
+<li><strong>Purpose:</strong> First-run introduction that pitches RepairHub and starts account creation or login.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>App launch when no account is signed in on the device.</li>
+<li>Signing out returns here.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>RepairHub logo, centred.</li>
+<li>Headline: <em>"Trusted repair services, just a few taps away."</em></li>
+<li>Supporting line about verified technicians, comparing quotes, tracking repairs and warranty.</li>
+<li>Illustration of a technician holding a wrench.</li>
+<li>Two full-width buttons stacked at the bottom: <code>Create Account</code> and <code>Log In</code>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Create Account</code> → Role picker (<code>/role</code>) with sign-up mode.</li>
+<li><code>Log In</code> → Role picker (<code>/role</code>) with login mode.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>If a user is already signed in on the device, this screen is skipped and the launch splash lands directly on their home screen instead.</li>
+</ul>
+<hr>
+<h3 id="2-role-picker">2. Role picker</h3>
+<ul>
+<li><strong>Route:</strong> <code>/role</code> (<code>src/app/role.tsx</code> → <code>RolePicker</code>)</li>
+<li><strong>Source:</strong> <code>src/features/auth/welcome.tsx</code> → <code>RolePicker</code></li>
+<li><strong>Role:</strong> Both</li>
+<li><strong>Purpose:</strong> Lets the user choose whether they are a customer or a technician, in either sign-up or login mode.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>From Welcome's <code>Create Account</code> / <code>Log In</code> buttons.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Logo and a heading that changes with mode:</li>
+</ul>
+<p>- Sign-up: <em>"Welcome to RepairHub"</em> / <em>"How would you like to use the app?"</em> - Login: <em>"Welcome back"</em> / <em>"Which account are you logging in to?"</em></p>
+<ul>
+<li>Two illustrated cards:</li>
+</ul>
+<p>- <strong>I need a repair</strong> — "Find trusted technicians for your devices and home repairs". - <strong>I'm a technician</strong> — "Find repair jobs, send quotes and manage your services."</p>
+<ul>
+<li>Footer line that toggles mode: <em>"Already have an account? Log in"</em> or <em>"Don't have an account? Create one"</em>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>Selecting either card stores the chosen role + mode and continues to <strong>Sign up</strong> or <strong>Log in</strong>.</li>
+<li>The footer link flips between login and sign-up mode in place.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>The chosen role is remembered for the rest of the flow and determines which tab bar the user lands in.</li>
+</ul>
+<hr>
+<h3 id="3-sign-up">3. Sign up</h3>
+<ul>
+<li><strong>Route:</strong> <code>/signup</code> (<code>src/app/signup.tsx</code> → <code>Signup</code>)</li>
+<li><strong>Source:</strong> <code>src/features/auth/signup.tsx</code> → <code>Signup</code></li>
+<li><strong>Role:</strong> Both (copy adapts to role)</li>
+<li><strong>Purpose:</strong> Creates a new account with name, email, phone and password.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Role picker → pick a role in sign-up mode.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title: <em>"Create your account"</em>.</li>
+<li>Intro: <em>"Let's get you started. Enter your details to create your [technician] account."</em></li>
+<li>Fields:</li>
+</ul>
+<p>- <strong>First name</strong> and <strong>Last name</strong> (required, side by side) and <strong>Middle name</strong> (optional). Letters, spaces, hyphens and apostrophes only. Technicians see the hint <em>"Use the name on your government ID — we check it during verification."</em> - <strong>Email address</strong> (required). - <strong>Phone number</strong> (required) — Nigerian format, prefixed <code>🇳🇬 +234</code>, expects 10 digits after the country code (a leading 0 is accepted and dropped). - <strong>Create password</strong> (required) — at least 8 characters, letters and a number. - <strong>Confirm password</strong> (required).</p>
+<ul>
+<li>Checkbox: <em>"I agree to the Terms &amp; Conditions and Privacy Policy"</em>.</li>
+<li>Footer link: <em>"Already have an account? Log In"</em>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Create Account</code> validates every field, registers via the API, and signs the user in.</li>
+<li>On success the user is sent to <strong>Set up account</strong> (customer) or <strong>Service profile / registration</strong> (technician).</li>
+<li><code>Log In</code> link switches to the login screen.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Errors appear in red only after the user has tried to submit.</li>
+<li>Messenger toasts for: check your name, fix fields marked in red, accept the terms.</li>
+<li>Button shows <em>"Creating account…"</em> while working.</li>
+</ul>
+<hr>
+<h3 id="4-log-in">4. Log in</h3>
+<ul>
+<li><strong>Route:</strong> <code>/login</code> (<code>src/app/login.tsx</code> → <code>Login</code>)</li>
+<li><strong>Source:</strong> <code>src/features/auth/login.tsx</code> → <code>Login</code></li>
+<li><strong>Role:</strong> Both</li>
+<li><strong>Purpose:</strong> Signs an existing user in with email + password.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Role picker → pick a role in login mode; or the "Log In" links on Welcome/Sign up.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title: <em>"Welcome Back!"</em></li>
+<li>Subtitle adapts: <em>"Log in to your customer/technician account to continue."</em></li>
+<li>Fields: <strong>Email address</strong> (required) and <strong>Password</strong> (required, with show/hide eye).</li>
+<li>Link: <em>"Forgot password?"</em>.</li>
+<li>Footer: <code>Log In</code> button and <em>"Don't have an account? Create Account"</em>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Log In</code> authenticates via the API and lands the user on their role's home screen.</li>
+</ul>
+<p>- Customer → Home (<code>/home</code>). - Technician → Home dashboard, or back to registration if they never finished registering.</p>
+<ul>
+<li><code>Forgot password?</code> → <strong>Forgot password</strong>.</li>
+<li><code>Create Account</code> link → Sign up.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Button shows <em>"Logging in…"</em> while working; the password field is cleared on failure.</li>
+<li>Empty fields show inline errors once the user tries to submit.</li>
+</ul>
+<hr>
+<h3 id="5-forgot-password">5. Forgot password</h3>
+<ul>
+<li><strong>Route:</strong> <code>/forgot-password</code> (<code>src/app/forgot-password.tsx</code> → <code>ForgotPassword</code>)</li>
+<li><strong>Source:</strong> <code>src/features/auth/login.tsx</code> → <code>ForgotPassword</code></li>
+<li><strong>Role:</strong> Both</li>
+<li><strong>Purpose:</strong> Explains how to recover an account, because self-service reset does not exist yet.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Log in → <code>Forgot password?</code>.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title: <em>"Reset password"</em>.</li>
+<li>Card explaining that email reset is "coming soon" and that the user should contact RepairHub support from their account email.</li>
+<li>Note: <em>"Remember it? Log in, then change it any time from Profile → Change password."</em></li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Back to log in</code> returns to the login screen.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>This is an informational screen only — there is no reset form.</li>
+</ul>
+<hr>
+<h3 id="6-change-password">6. Change password</h3>
+<ul>
+<li><strong>Route:</strong> <code>/new-password</code> (<code>src/app/new-password.tsx</code> → <code>NewPassword</code>)</li>
+<li><strong>Source:</strong> <code>src/features/auth/login.tsx</code> → <code>NewPassword</code></li>
+<li><strong>Role:</strong> Both</li>
+<li><strong>Purpose:</strong> Changes the password while signed in.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Customer Profile → <strong>Change password</strong>.</li>
+<li>Technician Profile → <strong>Change password</strong>.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title: <em>"Change password"</em>.</li>
+<li>Fields: <strong>Current password</strong>, <strong>New password</strong> (at least 8 characters, letters + number), <strong>Confirm new password</strong>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Save password</code> validates and saves via the API, then returns to the previous screen.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Shows <em>"Saving…"</em> while working.</li>
+<li>New/confirm mismatch and weak-password errors show in red.</li>
+</ul>
+<h2 id="customer-screens">Customer Screens</h2>
+<p>All screens a customer can see, ordered roughly along the repair journey: request a repair → receive and compare quotes → book and pay → track → confirm → warranty.</p>
+<p>The customer tab bar (defined in <code>src/app/(customer)/_layout.tsx</code>) is <strong>Home · My Repairs · Profile</strong>. The <strong>My Repairs</strong> tab shows a <code>!</code> badge when the customer has something to act on (quotes to compare, or a finished repair to confirm).</p>
+<hr>
+<h3 id="7-home">7. Home</h3>
+<ul>
+<li><strong>Route:</strong> <code>/home</code> (<code>src/app/(customer)/home.tsx</code> → <code>Home</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/home.tsx</code> → <code>Home</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> The customer's dashboard: a live repair at a glance, device categories, quick repair shortcuts and search.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Bottom tab <strong>Home</strong>. Sign-in lands here.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Top row: RepairHub logo and a <strong>notifications bell</strong> with an unread-count badge.</li>
+<li>Greeting row: profile avatar (tap to open Profile), <em>"Hi, [First name] 👋"</em> and <em>"What needs fixing today?"</em>.</li>
+<li>Tappable <strong>search bar</strong>: <em>"Search for a repair service…"</em>.</li>
+<li><strong>Active repair card</strong> (only when a repair is open) — see below.</li>
+<li>Category group chips: <strong>All · Electronics · Appliances · Furniture · Automotive</strong>.</li>
+<li><strong>Popular categories</strong> grid with a <code>See all →</code> link. Live categories (Phones, Laptops, Tablets, Printers) open a request; others show "Coming soon".</li>
+<li><strong>Request a repair</strong> list of quick shortcuts: Phone screen repair, Laptop repair, Tablet repair, Printer repair.</li>
+</ul>
+<p><strong>Active repair card (when a repair is open)</strong></p>
+<ul>
+<li>Shows the request reference, a status pill, device photo/icon, device name, progress bar across 7 stages (Request sent → Quotes in → Booking confirmed → Technician on the way/Device dropped off → Repair in progress → Repair completed → Payment released), the current step and "Step n of 7", plus the technician/next-step row with one context action button that changes with status: <strong>View · Compare/Pay · Track · Confirm</strong>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>Search bar → Search (<code>/search</code>).</li>
+<li>Bell → Notifications (<code>/alerts</code>).</li>
+<li>Avatar → Profile (<code>/profile</code>).</li>
+<li>Category tile → Request a repair step 1 (<code>/new-request</code>), pre-filling the category. Unlisted categories show a "coming soon" toast.</li>
+<li>Quick repair row → Request a repair step 1 with that category.</li>
+<li>Active card → the relevant stage screen (<code>/waiting</code>, <code>/compare</code>, <code>/pay</code>, <code>/track</code>, <code>/complete</code>).</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>If a repair is already open, starting a new one shows <em>"You already have an open repair request"</em> and routes to the active screen.</li>
+<li>After a finished/cancelled repair, the next request starts blank.</li>
+</ul>
+<hr>
+<h3 id="8-search-find-a-technician">8. Search / find a technician</h3>
+<ul>
+<li><strong>Route:</strong> <code>/search</code> (<code>src/app/search.tsx</code> → <code>Search</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/home.tsx</code> → <code>Search</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Browse verified technicians on RepairHub.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Home → search bar; Home → Popular categories <code>See all →</code>.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Search input: <em>"Search name or repair, e.g. laptop"</em>.</li>
+<li>Filter chips: <strong>✓ Verified only</strong>, <strong>Highest rated</strong>, <strong>Most jobs</strong>.</li>
+<li>Info banner: <em>"Prices come from quotes. Post one request and compare binding quotes side by side."</em></li>
+<li>List of technician cards: avatar (verified tick), name, skill/title, rating with job count and areas, chevron.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>Type to filter by name, skill or area.</li>
+<li>Sort chips change the ordering.</li>
+<li>Tapping a technician → Technician profile (<code>/tech-profile</code>).</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Empty result: <em>"No matches"</em> (with a search) or <em>"No verified technicians yet"</em>, with a <strong>Request a repair</strong> action.</li>
+</ul>
+<hr>
+<h3 id="9-technician-profile">9. Technician profile</h3>
+<ul>
+<li><strong>Route:</strong> <code>/tech-profile</code> (<code>src/app/tech-profile.tsx</code> → <code>TechProfile</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/quotes.tsx</code> → <code>TechProfile</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> A technician's public profile, including their quote for the current request.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Search result; a quote card's <code>View</code>; booking screens.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Blue header with back arrow and <em>"Technician Profile"</em>.</li>
+<li>Avatar (verified), an online/response chip or a "Verified by RepairHub" chip, name, title, rating with review count and distance.</li>
+<li>Three stat tiles: joined/experience, jobs completed, warranty.</li>
+<li><strong>Quote card</strong> for the current request (price, repair time, warranty, labour/parts split) when a quote exists.</li>
+<li><strong>Service categories</strong> the technician covers.</li>
+<li><strong>Certifications</strong> carousel ("Checked by RepairHub"); tapping opens a full-screen viewer.</li>
+<li><strong>Recent works</strong> before/after carousel (from real finished jobs or samples).</li>
+<li><strong>About</strong> text and the areas they serve.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Book [First name] · ₦…</code> (when they can be booked) → Book (<code>/book</code>) or Pay (<code>/pay</code>).</li>
+<li>Otherwise <code>Request a repair</code> → Request step 1.</li>
+<li>Tap certificates/works → full-screen image viewer.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>With no quote on the request, the primary action becomes <strong>Request a repair</strong>.</li>
+</ul>
+<hr>
+<h3 id="10-request-a-repair-step-1-describe-the-problem">10. Request a repair — step 1 (describe the problem)</h3>
+<ul>
+<li><strong>Route:</strong> <code>/new-request</code> (<code>src/app/new-request.tsx</code> → <code>NewRequest</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/request.tsx</code> → <code>NewRequest</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Capture the device, model, problem description and photos.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Home shortcuts/categories; History empty state; various "Request a repair" buttons.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Header: <em>"Request a repair"</em>; step label <em>"Step 1 of 3 · Tell us what's wrong"</em>.</li>
+<li><strong>Device</strong> — required; tappable tiles for Phones, Laptops, Tablets, Desktops, Printers.</li>
+<li><strong>Brand / model</strong> — required; a searchable picker. Common models per category are listed; the customer can also type any model not listed.</li>
+<li><strong>Describe the problem</strong> — required, free text, minimum 20 characters, with a live character counter.</li>
+<li><strong>Photos / videos</strong> — required; up to 5 photos and 1 video, with a sample-photo shortcut.</li>
+<li>Footer <code>Continue</code> button.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Continue</code> validates step 1 and moves to <strong>Location &amp; appointment</strong> (step 2).</li>
+<li>Selecting a category can reset an incompatible model.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Validation catches: no device, model too short, description under 20 characters, no photo. A phone model filed under the wrong category (e.g. an iPhone under Laptops) shows a helpful error.</li>
+<li>If a repair is already in progress, the screen instead shows an empty state: <em>"You have a repair in progress"</em> with a <strong>View it</strong> action.</li>
+</ul>
+<hr>
+<h3 id="11-request-a-repair-step-2-location-appointment">11. Request a repair — step 2 (location &amp; appointment)</h3>
+<ul>
+<li><strong>Route:</strong> <code>/request-details</code> (<code>src/app/request-details.tsx</code> → <code>RequestDetails</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/request.tsx</code> → <code>RequestDetails</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Where and when the repair is needed, and the service preference.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Request step 1 → <code>Continue</code>.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Step label <em>"Step 2 of 3 · Where's the repair needed?"</em>.</li>
+<li><strong>📍 Current location</strong> — required; prefilled from the profile's home address.</li>
+<li><strong>📅 Preferred date</strong> — required; choose from suggested dates or type one.</li>
+<li><strong>🕘 Preferred time</strong> — required; choose a time window or type one.</li>
+<li><strong>Service preference</strong> — required; <strong>Visit the workshop</strong> (free) or <strong>Home service</strong> (technician comes to you).</li>
+<li>Footer <code>Continue</code> button.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Continue</code> validates and moves to <strong>Review request</strong> (step 3).</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Missing location/date/time are flagged in red after submitting.</li>
+</ul>
+<hr>
+<h3 id="12-request-a-repair-step-3-review-submit">12. Request a repair — step 3 (review &amp; submit)</h3>
+<ul>
+<li><strong>Route:</strong> <code>/review-request</code> (<code>src/app/review-request.tsx</code> → <code>ReviewRequest</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/request.tsx</code> → <code>ReviewRequest</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Final check before the request is sent to technicians.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Request step 2 → <code>Continue</code>.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Review request"</em>; intro <em>"Kindly review your details before submitting your repair request"</em>.</li>
+<li><strong>Repair details</strong> card (category, model, description, photo thumbnails) with an edit (pencil) button.</li>
+<li><strong>Location</strong> card with edit button.</li>
+<li><strong>Preferred date &amp; time</strong> card with edit button.</li>
+<li><strong>Service preference</strong> card with edit button.</li>
+<li>Confirmation checkbox: <em>"Technicians will review your request and send quotation."</em></li>
+<li>Note: <em>"You only pay after you choose a quote. Your payment is held safely until you confirm the repair."</em></li>
+<li>Footer <code>Submit Request</code> button.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>Edit buttons jump back to the relevant step.</li>
+<li><code>Submit Request</code> sends the request to the API, asks for notification permission, notifies the customer, and goes to <strong>Waiting for quotes</strong>.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>If details are missing it redirects back to the offending step with a toast.</li>
+<li>The confirm checkbox must be ticked.</li>
+</ul>
+<hr>
+<h3 id="13-waiting-for-quotes">13. Waiting for quotes</h3>
+<ul>
+<li><strong>Route:</strong> <code>/waiting</code> (<code>src/app/waiting.tsx</code> → <code>Waiting</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/quotes.tsx</code> → <code>Waiting</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Live status while technicians respond with quotes.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>After submitting a request; the active-repair card when status is <em>Requested</em>.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title shows the request reference, e.g. <em>"Request RH-0841"</em>.</li>
+<li>A pulsing radar graphic with 📡 (waiting) or ✅ (quotes received).</li>
+<li>Title/subtitle: <em>"Finding technicians…"</em> or <em>"N quotes received"</em>.</li>
+<li>Incoming quote cards (price, rating, time, warranty, badges).</li>
+<li>Summary card: Device, Preferred, Service, Posted.</li>
+<li>Footer: <code>Compare N quotes →</code> once at least one quote exists.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Compare N quotes →</code> → Compare (<code>/compare</code>).</li>
+<li><strong>Cancel request</strong> (available before booking) asks for confirmation and cancels.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>No open request: empty state with <strong>Request a repair</strong>.</li>
+<li>Cancelled request shows <em>"This request was cancelled"</em>.</li>
+</ul>
+<hr>
+<h3 id="14-compare-quotes">14. Compare quotes</h3>
+<ul>
+<li><strong>Route:</strong> <code>/compare</code> (<code>src/app/compare.tsx</code> → <code>Compare</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/quotes.tsx</code> → <code>Compare</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Compare technicians' quotes side by side and choose one.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Waiting for quotes; active-repair card → Compare.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Repair quotations"</em>; subtitle <em>"N technicians responded · [model]"</em>.</li>
+<li>Sort chips: <strong>Lowest price · Highest rated · Fastest · Longest warranty</strong>, with a one-line explanation of the current sort.</li>
+<li>Status banner once a technician has been chosen (<em>"You chose … Finish paying…"</em>) or booked.</li>
+<li>Quote cards, each showing: technician avatar/name, total price, rating with jobs/distance, repair time and warranty, badges (<strong>Lowest price · Top rated · Fastest</strong>), labour/parts breakdown, optional note, expiry countdown, and <strong>View</strong> / <strong>Select</strong> buttons.</li>
+<li>Footer <strong>Cancel request</strong> (before booking).</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>Sort chips reorder the list.</li>
+<li><strong>View</strong> → Technician profile.</li>
+<li><strong>Select</strong> → Book (<code>/book</code>), or <strong>Pay</strong> if a booking already exists.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Badges only appear when comparison is meaningful (2+ quotes, real rating, a unique winner).</li>
+<li>No quotes yet → empty state with <strong>Back to request</strong>.</li>
+</ul>
+<hr>
+<h3 id="15-book-technician">15. Book technician</h3>
+<ul>
+<li><strong>Route:</strong> <code>/book</code> (<code>src/app/book.tsx</code> → <code>Book</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/booking.tsx</code> → <code>Book</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Confirm the appointment and price before paying.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Compare/quote card → Select; technician profile → Book.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Book Technician"</em>.</li>
+<li>Technician card (avatar, name, rating).</li>
+<li>Repair card (device, short description).</li>
+<li>Quoted price card.</li>
+<li><strong>Appointment</strong> section (date, time, service type) with a <code>Change</code> / <code>Done</code> toggle; when editing, offers date/time choices and service type.</li>
+<li>Total card.</li>
+<li>Footer <code>Continue to payment →</code>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Change</code> → edit appointment inline.</li>
+<li><code>Continue to payment →</code> → Checkout (<code>/pay</code>). If the date/time is invalid, it opens the editor with a toast.</li>
+</ul>
+<hr>
+<h3 id="16-checkout-pay-escrow">16. Checkout / pay (escrow)</h3>
+<ul>
+<li><strong>Route:</strong> <code>/pay</code> (<code>src/app/pay.tsx</code> → <code>Pay</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/booking.tsx</code> → <code>Pay</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Pay into escrow via Paystack, or choose to pay cash after the repair.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Book → <code>Continue to payment →</code>; active card → <strong>Pay</strong>.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Checkout"</em>.</li>
+<li>Repair card (device, date/time, service type).</li>
+<li>Technician card.</li>
+<li><strong>Price details</strong>: Labour, Parts, RepairHub fee (₦0) and Total.</li>
+<li><strong>Payment method</strong> options:</li>
+</ul>
+<p>- <strong>Card, bank transfer or USSD</strong> — secure checkout by Paystack, held in escrow. - <strong>Cash after the repair</strong> — pay the technician directly when done.</p>
+<ul>
+<li>Trust note: <em>"🛡 Your payment is held securely until you confirm the repair is complete."</em></li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>🔒 Pay ₦…</code> opens the Paystack page; the app then polls until the server confirms payment and goes to <strong>Booking confirmed</strong>.</li>
+<li>With cash selected: <code>Book · pay cash after the repair</code> confirms the booking directly.</li>
+<li>While waiting: <code>I've paid · check now</code> and <code>Open the payment page again</code>.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>On payment failure: <em>"Payment didn't go through. You have not been charged."</em></li>
+<li>A slow/absent confirmation shows <em>"Payment not received yet…"</em>.</li>
+<li>If already accepted (paid), it shows the <strong>Booking confirmed</strong> screen.</li>
+</ul>
+<hr>
+<h3 id="17-booking-confirmed">17. Booking confirmed</h3>
+<ul>
+<li><strong>Route:</strong> <code>/confirmed</code> (<code>src/app/confirmed.tsx</code> → <code>Confirmed</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/booking.tsx</code> → <code>Confirmed</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Success moment after the booking is paid/confirmed.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>After successful payment; if already confirmed, <code>Pay</code> redirects here.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Animated success mark, <em>"Booking Confirmed!"</em> and a booking ID chip.</li>
+<li>Card: technician (avatar, name, rating), Date/time, Address, Amount in escrow (or "Pay in cash after the repair"), Warranty.</li>
+<li>Info banner: <em>"[First name] has your booking and will update you here as the repair moves along."</em></li>
+<li>Links: <strong>Reschedule or cancel</strong>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Track Repair →</code> → Track repair.</li>
+<li><code>Call Technician</code> (when a phone number is available).</li>
+<li><strong>Reschedule or cancel</strong> → Appointments.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>If the booking no longer exists (cancelled), it shows a "refunded"/"cancelled" empty state instead.</li>
+</ul>
+<hr>
+<h3 id="18-appointments">18. Appointments</h3>
+<ul>
+<li><strong>Route:</strong> <code>/appointments</code> (<code>src/app/appointments.tsx</code> → <code>Appointments</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/booking.tsx</code> → <code>Appointments</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Manage the upcoming appointment and view past repairs.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Profile → Appointments; Booking confirmed → Reschedule or cancel; Track → Manage appointment.</li>
+</ul>
+<p><strong>On screen (upcoming appointment)</strong></p>
+<ul>
+<li>Appointment card with status pill and reference, a date tile, date/time and service type, a <strong>Stepper</strong> (Booked → On the way/Dropped off → Repairing → Done), device row, technician row (with call button), "Where" and escrow/cash tiles, and action buttons.</li>
+<li><strong>Past</strong> section listing completed repairs.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Track repair</code> → Track.</li>
+<li><code>Reschedule</code> → inline date/time editor → <code>Confirm new time</code>.</li>
+<li><code>Cancel</code> → confirmation (refund if escrow held) → Repair history.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Once the repair has started, reschedule/cancel is disabled with a note: <em>"The repair has started, so the time can't be changed…"</em>.</li>
+<li>No upcoming appointment → empty state with <strong>Request a repair</strong>.</li>
+</ul>
+<hr>
+<h3 id="19-track-repair">19. Track repair</h3>
+<ul>
+<li><strong>Route:</strong> <code>/track</code> (<code>src/app/track.tsx</code> → <code>Track</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/tracking.tsx</code> → <code>Track</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Follow the repair's progress and contact the technician.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Active card → Track; Appointments → Track repair; Booking confirmed → Track Repair.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"[Model] repair"</em>; <em>"Request ID: …"</em>.</li>
+<li>Dispute banner (if a problem was reported and payment is frozen).</li>
+<li><strong>Live map</strong> when the technician is on the way (home service).</li>
+<li><strong>Timeline</strong> of the repair's stages.</li>
+<li><strong>Photos from [technician]</strong> grid (when the technician has added progress photos).</li>
+<li>Technician summary card (avatar, name, date/time, service type, amount).</li>
+<li>Footer: <code>Check &amp; confirm repair →</code> (when completed) or <code>View warranty</code> (when released), plus <code>Call [name]</code> and <code>Manage appointment</code>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>Call technician, manage appointment, confirm, or view warranty as available.</li>
+<li><strong>Report a problem</strong> link (while not released and no open dispute) → Report an issue.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Nothing to track yet → empty state with <strong>Go home</strong>.</li>
+<li>Open dispute shows <em>"Problem reported… ₦… stays frozen in escrow…"</em>.</li>
+</ul>
+<hr>
+<h3 id="20-report-an-issue-dispute">20. Report an issue (dispute)</h3>
+<ul>
+<li><strong>Route:</strong> <code>/report</code> (<code>src/app/report.tsx</code> → <code>Report</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/tracking.tsx</code> → <code>Report</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Freeze escrow and raise a problem with the repair.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Track repair → Report a problem; Check &amp; confirm → Report an Issue.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Report an issue"</em>.</li>
+<li>Warning banner: <em>"Your ₦… stays frozen in escrow while a RepairHub admin reviews both sides."</em></li>
+<li><strong>What went wrong?</strong> options (Repair not done properly, New damage, Charged more than quote, Didn't show up, Other).</li>
+<li><strong>Details</strong> (required, min 15 characters) and <strong>Evidence</strong> photo/video upload.</li>
+<li><strong>What would fix this?</strong> options (Redo the repair, Partial refund, Full refund).</li>
+<li>Footer <code>Submit report</code>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Submit report</code> sends the dispute and returns to Track.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>If payment was already released, the screen instead points to the <strong>warranty claim</strong> flow (escrow can no longer be frozen).</li>
+</ul>
+<hr>
+<h3 id="21-check-confirm-repair">21. Check &amp; confirm repair</h3>
+<ul>
+<li><strong>Route:</strong> <code>/complete</code> (<code>src/app/complete.tsx</code> → <code>Complete</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/completion.tsx</code> → <code>Complete</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Confirm the repair works and release escrow to the technician.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Track repair → <code>Check &amp; confirm repair →</code>; active card → Confirm.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Success mark and <em>"Repair Completed!"</em>.</li>
+<li>Auto-release countdown card: <em>"Payment releases automatically in … unless you confirm or report an issue."</em></li>
+<li>Before/after photo row.</li>
+<li>Technician card (verified).</li>
+<li><strong>Repair details</strong> card (service, issue, device, cost, completed on, warranty).</li>
+<li>Optional <strong>Quick check</strong> toggles (Device powers on, Problem fixed, No new damage).</li>
+<li>Footer: <code>Confirm &amp; release ₦…</code> and <code>Report an Issue →</code>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Confirm &amp; release ₦…</code> asks for confirmation, releases payment, and goes to <strong>Rate your repair</strong>.</li>
+<li><code>Report an Issue →</code> → Report an issue.</li>
+<li>After release, the footer becomes <code>View warranty</code>; if disputed, <code>View issue status</code>.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Not finished yet → empty state linking back to Track.</li>
+</ul>
+<hr>
+<h3 id="22-rate-your-repair">22. Rate your repair</h3>
+<ul>
+<li><strong>Route:</strong> <code>/review</code> (<code>src/app/review.tsx</code> → <code>Review</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/completion.tsx</code> → <code>Review</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Rate and review the technician after a completed repair.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>After releasing payment; Repair details → Rate this repair.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Technician avatar and name.</li>
+<li><em>"How was your repair experience?"</em> with a 5-star picker and a word label (Poor → Excellent).</li>
+<li>Tag chips: On time, Professional, Fair price, Neat work, Explained the fix.</li>
+<li>Optional written review (min 10 characters if written).</li>
+<li><strong>Skip for now</strong> link.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Submit Review</code> sends the review and goes to <strong>Review submitted</strong>.</li>
+<li><strong>Skip for now</strong> → Warranty.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>A star rating is required; a written review must be at least 10 characters.</li>
+</ul>
+<hr>
+<h3 id="23-review-submitted">23. Review submitted</h3>
+<ul>
+<li><strong>Route:</strong> <code>/review-done</code> (<code>src/app/review-done.tsx</code> → <code>ReviewDone</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/completion.tsx</code> → <code>ReviewDone</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Confirmation that the review was submitted.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Success mark, <em>"Your review has been submitted"</em>, and a thank-you line.</li>
+<li>Footer: <code>View your warranty</code> and <code>Back to home</code>.</li>
+</ul>
+<hr>
+<h3 id="24-warranty-info">24. Warranty info</h3>
+<ul>
+<li><strong>Route:</strong> <code>/warranty</code> (<code>src/app/warranty.tsx</code> → <code>Warranty</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/warranty.tsx</code> → <code>Warranty</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> The digital warranty card, coverage details and QR code.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Profile → Warranties; Repair details → View warranty; after confirmation.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Header with a <strong>share</strong> action.</li>
+<li>Warranty header card (device, status chip Active/Expired/Claim open, repair ID, link to repair details).</li>
+<li><strong>Warranty information</strong> card (Warranty ID, Repair ID, Technician, Repair date, Expiry date with days left).</li>
+<li><strong>Coverage</strong> and <strong>Not covered</strong> lists.</li>
+<li><strong>Warranty code</strong> — a scannable QR code (<em>"Show this code to any RepairHub technician to verify your warranty."</em>).</li>
+<li><strong>Terms and conditions</strong> row (opens a dialog).</li>
+<li>Footer: <code>Submit warranty claim</code> (or <code>Track claim</code> if a claim is open).</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>If no warranty exists yet: <em>"Your digital warranty is created when you confirm the repair, or when the payment auto-releases."</em></li>
+</ul>
+<hr>
+<h3 id="25-submit-warranty-claim">25. Submit warranty claim</h3>
+<ul>
+<li><strong>Route:</strong> <code>/claim</code> (<code>src/app/claim.tsx</code> → <code>Claim</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/warranty.tsx</code> → <code>Claim</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Raise a warranty claim for a completed repair.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Warranty → Submit warranty claim; Report (released) → Start a warranty claim; Warranty → Track claim.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Warranty header card (device, repair ID, warranty ID, days left).</li>
+<li><strong>What issue are you experiencing?</strong> dropdown (Screen issue, Battery issue, Charging problem, Camera issue, Sound/microphone, Software/performance, Other).</li>
+<li><strong>Is this the same issue that was repaired?</strong> Yes / No.</li>
+<li><strong>Describe the issue</strong> (required, max 500 characters, live counter).</li>
+<li><strong>Preferred resolution</strong> (Repair again, Replace part, Refund).</li>
+<li>Footer <code>Submit claim</code>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Submit claim</code> files the claim and goes to <strong>Claim submitted</strong>.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Without a completed repair + active warranty, shows <em>"A warranty claim needs a completed repair with an active warranty."</em></li>
+<li>If a claim already exists, it shows the tracking view instead.</li>
+</ul>
+<hr>
+<h3 id="26-claim-submitted-track-claim">26. Claim submitted / track claim</h3>
+<ul>
+<li><strong>Route:</strong> <code>/claim-submitted</code> (<code>src/app/claim-submitted.tsx</code> → <code>ClaimSubmitted</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/warranty.tsx</code> → <code>ClaimSubmitted</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Confirms a claim and tracks its status.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Just submitted: success mark, <em>"Claim submitted successfully"</em>.</li>
+<li>Details card (Claim ID, Warranty ID, Repair ID, Details) with copy-to-clipboard.</li>
+<li>Status banner reflecting the claim state (Submitted / Accepted / Disputed / Resolved).</li>
+<li><strong>Claim status</strong> timeline: Submitted → With [technician] → Fixed under warranty / Not covered.</li>
+<li>Footer (just submitted): <code>Track claim</code> and <code>Back to home</code>.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>No open claim → <em>"No open claim."</em></li>
+</ul>
+<hr>
+<h3 id="27-set-up-account-home-address">27. Set up account / home address</h3>
+<ul>
+<li><strong>Route:</strong> <code>/cust-setup</code> (<code>src/app/cust-setup.tsx</code> → <code>CustomerSetup</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/account.tsx</code> → <code>CustomerSetup</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> First-time profile completion (photo + address); later reused to edit the address.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Automatically after a new customer signs up; Profile → Home address to edit later.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>First time: <em>"Set up your account"</em> / <em>"Complete your profile"</em>. Later: <em>"Home address"</em>.</li>
+<li>Profile photo picker (camera or library).</li>
+<li>Name/phone/email card.</li>
+<li><strong>Home address</strong> (required, min 8 characters).</li>
+<li>Footer: <code>Continue</code> (first time) or <code>Save</code> (editing).</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>Saving via the API then lands on Home (first time) or returns to Profile (editing).</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>A user who has not completed setup is redirected here before they can use the customer tabs.</li>
+<li>Only a draft request picks up a changed address; a booked visit keeps its own address.</li>
+</ul>
+<hr>
+<h3 id="28-profile">28. Profile</h3>
+<ul>
+<li><strong>Route:</strong> <code>/profile</code> (<code>src/app/(customer)/profile.tsx</code> → <code>CustomerProfile</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/account.tsx</code> → <code>CustomerProfile</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> The customer profile tab and settings menu.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Centred profile photo (tap to change), name, phone and email.</li>
+<li>Menu rows: <strong>Home address</strong> (or "Not set"), <strong>Appointments</strong> (or "None upcoming"), <strong>Warranties</strong> (active warranty ref or "None yet"), <strong>Notifications</strong>, <strong>Change password</strong>.</li>
+<li><code>Log out</code> button (with confirmation).</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>Each row opens its screen. Log out returns to Welcome.</li>
+</ul>
+<hr>
+<h3 id="29-repair-history">29. Repair history</h3>
+<ul>
+<li><strong>Route:</strong> <code>/repairs</code> (<code>src/app/(customer)/repairs.tsx</code> → <code>RepairHistory</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/history.tsx</code> → <code>RepairHistory</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> All of the customer's repairs, past and present.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Bottom tab <strong>My Repairs</strong>.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Repair History"</em> (no back button).</li>
+<li>Segments: <strong>All (n) · Completed · Cancelled</strong>.</li>
+<li>Repair cards: device thumbnail, model, service, date and amount, technician, status chip (Active/Completed/Cancelled), warranty line, chevron.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>Tapping a card → Repair details.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>No repairs: illustrated empty state with <strong>Request a repair</strong>.</li>
+<li>Empty tab: <em>"No completed/cancelled repairs."</em></li>
+</ul>
+<hr>
+<h3 id="30-repair-details">30. Repair details</h3>
+<ul>
+<li><strong>Route:</strong> <code>/repair</code> (<code>src/app/repair.tsx</code> → <code>RepairDetail</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/history.tsx</code> → <code>RepairDetail</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> Details of a single repair from history (or the live one).</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Header card (thumbnail, model, service, status chip).</li>
+<li>Details card (Repair ID, Category, date, service, amount held/paid, warranty until, note).</li>
+<li>Problem description and photos (for the live repair).</li>
+<li>Technician card.</li>
+<li>Timeline of updates (live repair only).</li>
+<li>Footer button depending on state: <code>Track repair</code>, <code>Rate this repair</code> / <code>View warranty</code>, or <code>Request a repair</code>.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Missing repair: <em>"This repair is no longer available."</em></li>
+</ul>
+<hr>
+<h3 id="31-notifications">31. Notifications</h3>
+<ul>
+<li><strong>Route:</strong> <code>/alerts</code> (<code>src/app/alerts.tsx</code> → <code>Alerts</code>)</li>
+<li><strong>Source:</strong> <code>src/features/customer/account.tsx</code> → <code>Alerts</code></li>
+<li><strong>Role:</strong> Customer</li>
+<li><strong>Purpose:</strong> The customer's notification inbox.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Notifications"</em>.</li>
+<li>List of notifications; opening the screen marks them as read.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Empty: <em>"Updates about your repairs will show up here."</em></li>
+<li>Tapping a notification can deep-link to the relevant screen (wired at the app root).</li>
+</ul>
+<h2 id="technician-screens">Technician Screens</h2>
+<p>All screens a technician can see, ordered roughly along their journey: register and get verified → browse jobs and quote → accept a booking → progress the job → get paid → manage earnings and reviews.</p>
+<p>The technician tab bar (defined in <code>src/app/(tech)/_layout.tsx</code>) is <strong>Home · Jobs · Earnings · Profile</strong>. The <strong>Jobs</strong> tab shows a badge when there are open requests or an accepted booking to act on.</p>
+<p>A technician whose verification is not yet complete is redirected to registration; while under review they can look around but quoting is disabled until verified.</p>
+<hr>
+<h3 id="32-service-profile-registration">32. Service profile (registration)</h3>
+<ul>
+<li><strong>Route:</strong> <code>/tech-register</code> (<code>src/app/tech-register.tsx</code> → <code>TechRegister</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/registration.tsx</code> → <code>TechRegister</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Set up the technician profile and submit documents for verification.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Automatically after a technician signs up; Profile → Edit profile (dashboard "What you can do now").</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Service profile"</em>; intro <em>"Set up your profile so customers can find and trust you. It takes about 3 minutes."</em></li>
+<li><strong>1 · Personal details</strong> — first/middle/last name (must match government ID), read-only verified phone.</li>
+<li><strong>2 · Services &amp; skills</strong> — checkboxes for the live categories (Laptops, Smartphones, Tablets, Desktops, Printers).</li>
+<li><strong>3 · Service area</strong> — pick at least one Lagos area; plus a travel radius (5/10/15 km).</li>
+<li><strong>4 · Documents</strong> — government ID (NIN slip, Driver's licence, Voter's card, Passport) and at least one certificate.</li>
+<li>Footer <code>Submit for verification</code>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Submit for verification</code> uploads the profile and documents, asks for notification permission, notifies the technician, and goes to Home.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Alerts if the name is invalid, no skill/area chosen, or ID/certificate missing.</li>
+<li>Button shows <em>"Uploading…"</em> while working.</li>
+</ul>
+<hr>
+<h3 id="33-verification-status">33. Verification status</h3>
+<ul>
+<li><strong>Route:</strong> <code>/verification</code> (<code>src/app/verification.tsx</code> → <code>Verification</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/registration.tsx</code> → <code>Verification</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Shows the state of the technician's application and documents review.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Dashboard verification card; Profile → Verification.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Applicant card (avatar, name, submitted date) with a status (Verified / Fix needed / In review).</li>
+<li>Rejection banner (with the reason) when action is needed.</li>
+<li><strong>Application progress</strong> list: Personal details, Services &amp; skills, Service area, Documents verification — each with a Completed / In review / Action needed pill.</li>
+<li>"What happens next?" panel while not yet verified.</li>
+<li>Footer: <code>Go to dashboard</code> (verified) or <code>Go to profile</code>, plus <strong>Contact support</strong>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>If rejected: <code>Upload a new ID photo &amp; resubmit</code>.</li>
+<li><code>Contact support</code> opens the phone dialler.</li>
+</ul>
+<hr>
+<h3 id="34-home-dashboard">34. Home dashboard</h3>
+<ul>
+<li><strong>Route:</strong> <code>/tech-home</code> (<code>src/app/(tech)/tech-home.tsx</code> → <code>TechHome</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/dashboard.tsx</code> → <code>TechHome</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> The technician's home: earnings, key stats, today's job and nearby requests.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Bottom tab <strong>Home</strong>. Sign-in lands here (verified technicians).</li>
+</ul>
+<p><strong>On screen — while under review (not verified)</strong></p>
+<ul>
+<li>Greeting, a verification-status card (or "Action needed" when rejected), and a "What you can do now" list: Browse available jobs, Check earnings, Edit profile, Help and support. Plus a help panel.</li>
+</ul>
+<p><strong>On screen — verified</strong></p>
+<ul>
+<li>Greeting row (avatar, name, "Ready for today's repairs?") and notification bell.</li>
+<li><strong>Available earnings</strong> card (big number, total this month, trend).</li>
+<li><strong>Overview</strong> period selector (This week / This month / All time) and four stat tiles: Available jobs, Active jobs, Completed jobs, Average rating — each tappable.</li>
+<li>Warranty-claim card when a customer is waiting for an answer.</li>
+<li><strong>Today's job</strong> / <strong>Next job</strong> card (device, customer, service type, date/time, status) with <code>Respond to booking</code> or <code>View job</code>.</li>
+<li><strong>Available nearby</strong> list (up to 3) with <code>See all</code>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>Bell → Notifications.</li>
+<li>Earnings card / stat tiles → Earnings, Jobs (with a tab), or Reviews.</li>
+<li>Job card → Booking request or Update repair status.</li>
+<li>Nearby request → Job details.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>No scheduled job → <em>"No job scheduled. Send quotes on nearby requests to get booked."</em></li>
+<li>No nearby requests → <em>"No open requests in your skills right now."</em></li>
+</ul>
+<hr>
+<h3 id="35-notifications">35. Notifications</h3>
+<ul>
+<li><strong>Route:</strong> <code>/tech-alerts</code> (<code>src/app/tech-alerts.tsx</code> → <code>TechAlerts</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/dashboard.tsx</code> → <code>TechAlerts</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> The technician's notification inbox.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Notifications"</em>; list of notifications. Unread ones are marked read on open, except warranty claims awaiting a response.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Empty: <em>"New bookings, payments and reviews show up here."</em></li>
+</ul>
+<hr>
+<h3 id="36-jobs-board">36. Jobs board</h3>
+<ul>
+<li><strong>Route:</strong> <code>/jobs</code> (<code>src/app/(tech)/jobs.tsx</code> → <code>Jobs</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/jobs.tsx</code> → <code>Jobs</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Browse open requests, active jobs and completed jobs.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Bottom tab <strong>Jobs</strong> (optionally with a preset tab).</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Jobs"</em> with <strong>search</strong> and <strong>filter</strong> icon buttons.</li>
+<li>Three tabs: <strong>Available (n) · Active (n) · Completed (n)</strong>.</li>
+<li>Available tab: intro line, a "quoting unlocks once verified" warning if unverified, and request cards (device photo, headline, customer, distance/area, mode, needed date, typical or your price, category chips) with <strong>View details</strong> and <strong>Send quote</strong> / <strong>Revise quote</strong>.</li>
+<li>Active tab: intro line and the current active job card (device, customer, service, date, price, status, mini progress steps) with context buttons (<code>Respond to booking</code> / <code>Start job</code> / <code>View job</code> / <code>Update status</code>) and <strong>View details</strong>.</li>
+<li>Completed tab: list of finished jobs with a <code>Show more</code> control.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>Search toggles a search box; Filter toggles category chips and a "Within 10 km" toggle.</li>
+<li>Request card → Job details or Send/Revise quote.</li>
+<li>Active job → Booking request or Update repair status.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>No matching jobs → empty state. Jobs outside the technician's skills are summarised with a link to <strong>Services &amp; coverage</strong>.</li>
+<li>Unverified technicians can browse but not quote.</li>
+</ul>
+<hr>
+<h3 id="37-job-details">37. Job details</h3>
+<ul>
+<li><strong>Route:</strong> <code>/job-details</code> (<code>src/app/job-details.tsx</code> → <code>JobDetails</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/jobs.tsx</code> → <code>JobDetails</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Full details of one request before quoting.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Customer row (avatar, name, reference, distance/area chip).</li>
+<li>Device heading, issue text, and customer photos.</li>
+<li>Details card: Category, Area, Exact address (shared after booking), Needed, Service, Posted, and Your quote if one exists.</li>
+<li>Banner if the job is already booked (whether to you or another technician).</li>
+<li>Footer: <code>Send a quote</code> / <code>Revise quote</code>, or <code>Respond to booking</code> / <code>Open job</code> if booked to you.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Unverified technicians see the quote button disabled.</li>
+</ul>
+<hr>
+<h3 id="38-send-revise-quote">38. Send / revise quote</h3>
+<ul>
+<li><strong>Route:</strong> <code>/send-quote</code> (<code>src/app/send-quote.tsx</code> → <code>SendQuote</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/jobs.tsx</code> → <code>SendQuote</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Compose or revise a quote for a request.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Send quote"</em> or <em>"Revise quote"</em>.</li>
+<li>Request summary card (reference, device, distance/area, issue).</li>
+<li>Existing-quote banner when revising.</li>
+<li>Fields: <strong>Labour (₦)</strong> (required), <strong>Parts (₦)</strong>, <strong>Ready in</strong> (days), <strong>Warranty</strong> (months), <strong>Note to customer</strong> (optional).</li>
+<li>Earnings card: Customer pays, RepairHub commission (10%), and <strong>You receive</strong>.</li>
+<li>Note about validity (7 days) and travel.</li>
+<li>Footer <code>Send quote</code> / <code>Update quote · ₦…</code>; <strong>Withdraw quote</strong> when revising.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Send quote</code> / <code>Update quote</code> submits via the API and returns.</li>
+<li><code>Withdraw quote</code> confirms and removes the quote.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Offline: quotes are blocked with <em>"You're offline… Quotes need a connection…"</em>.</li>
+<li>If the request is already booked, an empty state points to the job or back to Jobs.</li>
+</ul>
+<hr>
+<h3 id="39-booking-request">39. Booking request</h3>
+<ul>
+<li><strong>Route:</strong> <code>/booking-request</code> (<code>src/app/booking-request.tsx</code> → <code>BookingRequest</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/job-progress.tsx</code> → <code>BookingRequest</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Accept or decline a customer's booking.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Dashboard/Today's job → Respond to booking; Jobs → Respond to booking.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"New booking"</em>.</li>
+<li>Success banner: <em>"[Customer] chose your quote and paid ₦… into escrow."</em></li>
+<li>Details card: Job, When, Service, Address (home service), Customer phone (masked until accepted), In escrow, You receive (after 10%).</li>
+<li>Note: <em>"Please respond within 2 hours. If you decline, the customer gets a full refund."</em></li>
+<li>Job stages summary.</li>
+<li>Footer: <code>Accept booking</code> and <code>Decline</code>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Accept booking</code> (needs a connection) moves the job to Accepted and opens <strong>Update repair status</strong>.</li>
+<li><code>Decline</code> confirms, refunds the customer, and returns to Jobs.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>No booking request → empty state linking to Jobs.</li>
+<li>Already accepted → empty state linking to the job.</li>
+</ul>
+<hr>
+<h3 id="40-update-repair-status">40. Update repair status</h3>
+<ul>
+<li><strong>Route:</strong> <code>/job</code> (<code>src/app/job.tsx</code> → <code>Job</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/job-progress.tsx</code> → <code>Job</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Move the job through its stages and keep the customer informed. Works offline.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Dashboard/Jobs active job → View job / Update status; after accepting a booking.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Update Repair Status"</em>.</li>
+<li>Offline strip / sync status.</li>
+<li>Dispute banners (frozen payment, or a resolved outcome).</li>
+<li>Job card: device photo, headline, customer, Job ID, service type, date/time; plus <code>Navigate</code> (home service early stages) and a call button.</li>
+<li><strong>Repair progress</strong> stage list (Booked → On the way/Device received → Repair in progress → Repair completed → Paid) with the current stage highlighted and completed stages expandable.</li>
+<li><strong>Add update</strong> note box (optional) and a <strong>Pause for parts</strong> flow.</li>
+<li>"Waiting for customer to confirm" banner with auto-release countdown after completion.</li>
+<li><strong>Job details</strong> card (description, customer photos, labour/parts, escrow, warranty offered).</li>
+<li>Footer: <code>Save progress · [next stage]</code> or, when paused, <code>▶ Parts arrived · resume repair</code>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Save progress</code> advances to the next stage (queued offline if needed).</li>
+<li><code>Pause for parts</code> records an awaiting-parts state with a note.</li>
+<li>Completing the job navigates to <strong>Repair completed</strong>.</li>
+<li>Call/Navigate where available.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>No active job → empty state.</li>
+<li>Payment frozen while a reported problem is under review — status can't be changed.</li>
+<li>Completion notes: the API has no technician photos yet, so only the note is required.</li>
+</ul>
+<hr>
+<h3 id="41-repair-completed">41. Repair completed</h3>
+<ul>
+<li><strong>Route:</strong> <code>/job-done</code> (<code>src/app/job-done.tsx</code> → <code>JobDone</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/job-progress.tsx</code> → <code>JobDone</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Success moment after the technician marks the repair complete.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Success mark, <em>"Repair completed!"</em>, and a status line (customer notified / customer confirmed).</li>
+<li>Job summary card (device, customer, Job ID, completed time, total).</li>
+<li>Note about the net amount after 10% commission.</li>
+<li>Footer: <code>View completed job</code> and <code>Back to home</code>.</li>
+</ul>
+<hr>
+<h3 id="42-earnings">42. Earnings</h3>
+<ul>
+<li><strong>Route:</strong> <code>/earnings</code> (<code>src/app/(tech)/earnings.tsx</code> → <code>Earnings</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/earnings.tsx</code> → <code>Earnings</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Wallet balance, earnings chart and recent transactions.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Bottom tab <strong>Earnings</strong>; Home → Earnings card.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Earnings"</em> with a date chip.</li>
+<li><strong>Total earnings</strong> card (this month, job count, after 10% commission) with a mini chart.</li>
+<li>Two tiles: <strong>Available</strong> and <strong>Pending (escrow)</strong>.</li>
+<li>Withdraw button (<code>Withdraw ₦…</code>, disabled below the ₦1,000 minimum).</li>
+<li>Payout summary (bank account / set up link).</li>
+<li><strong>Earning overview</strong> with This week / This month / All time segments and a bar chart.</li>
+<li><strong>Recent transactions</strong> list (credits and withdrawals), each tappable.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Withdraw</code> → Withdraw.</li>
+<li>Transaction row → Transaction details.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Brand-new technician: a "your earnings chart starts here" placeholder instead of a chart.</li>
+</ul>
+<hr>
+<h3 id="43-profile">43. Profile</h3>
+<ul>
+<li><strong>Route:</strong> <code>/me</code> (<code>src/app/(tech)/me.tsx</code> → <code>Me</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/profile.tsx</code> → <code>Me</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> The technician profile tab and settings menu.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Offline strip.</li>
+<li>Avatar (verified), name, "Electronics technician · [area]", a profile-completion bar (85%) and label.</li>
+<li>Menu rows: <strong>Services &amp; coverage</strong>, <strong>Reviews</strong>, <strong>Verification</strong>, <strong>Payout account</strong>, <strong>Warranty claims</strong>, <strong>Change password</strong>.</li>
+<li>An <strong>Availability calendar</strong> row marked "Coming soon".</li>
+<li><code>Log out</code> (with confirmation).</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>Each row opens its screen. Log out returns to Welcome.</li>
+</ul>
+<hr>
+<h3 id="44-services-coverage">44. Services &amp; coverage</h3>
+<ul>
+<li><strong>Route:</strong> <code>/services</code> (<code>src/app/services.tsx</code> → <code>ServicesCoverage</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/profile.tsx</code> → <code>ServicesCoverage</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Choose which services and areas the technician covers.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Services &amp; Coverage"</em>.</li>
+<li><strong>Services you offer</strong> — switches for Laptop repair, Phone repair, Tablet repair, Desktop repair, Printer repair, plus add-ons (Software installation, Data recovery, Device cleaning).</li>
+<li><strong>Service coverage</strong> — searchable area picker; selected areas shown as removable chips; <code>＋ Add service area</code>.</li>
+<li>Footer <code>Save changes</code>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>Toggling switches and adding/removing areas; <code>Save changes</code> persists via the API.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Requires at least one service and one area (flagged in red otherwise).</li>
+</ul>
+<hr>
+<h3 id="45-reviews">45. Reviews</h3>
+<ul>
+<li><strong>Route:</strong> <code>/reviews</code> (<code>src/app/reviews.tsx</code> → <code>Reviews</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/profile.tsx</code> → <code>Reviews</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> The technician's ratings and customer reviews.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"My reviews"</em>.</li>
+<li>Summary card: big average score, stars, total count, and a 5→1 star distribution bar.</li>
+<li>Filter chips: All · 5★ · 4★ · 3★ &amp; below.</li>
+<li>Review cards (customer, date, stars, job, text, tags).</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>No reviews: empty state. (Note: replying to reviews is not available in the API yet.)</li>
+</ul>
+<hr>
+<h3 id="46-warranty-claims">46. Warranty claims</h3>
+<ul>
+<li><strong>Route:</strong> <code>/tech-claim</code> (<code>src/app/tech-claim.tsx</code> → <code>TechClaim</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/warranty-claims.tsx</code> → <code>TechClaim</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Respond to customers' warranty claims.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Profile → Warranty claims; Dashboard warranty-claim card.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Warranty claims"</em>.</li>
+<li>Banner if any customers are waiting for a response.</li>
+<li>Claim cards: device thumbnail, claim reference, status chip (Action needed / Fixed / Not covered), device · repair · date, the customer's description, and the technician's response if any.</li>
+<li>When responding: options <strong>I'll fix it under warranty</strong> (free) or <strong>Not covered by the warranty</strong> (choose a reason and explain), plus a note field.</li>
+<li>Earlier claims section.</li>
+<li>Footer card explaining warranty work is free for the customer.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Respond</code> expands the response form.</li>
+<li><code>Mark fixed</code> or <code>Send response</code> submits and notifies the customer.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Loading state; no claims → empty state.</li>
+</ul>
+<hr>
+<h3 id="47-payout-account">47. Payout account</h3>
+<ul>
+<li><strong>Route:</strong> <code>/payout-account</code> (<code>src/app/payout-account.tsx</code> → <code>PayoutAccountScreen</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/payouts/payout-account.tsx</code> → <code>PayoutAccountScreen</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Add or change the bank account that payouts go to.</li>
+</ul>
+<p><strong>How you get there</strong></p>
+<ul>
+<li>Profile → Payout account; Earnings → Manage/Set up; Withdraw → Change.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>If an account exists: a view card (bank, formatted account number, account name) and <code>Change payout account</code>.</li>
+<li>If adding/changing: fields <strong>Bank</strong> (searchable list of supported banks), <strong>Account number (NUBAN)</strong> (10 digits) and <strong>Account name</strong>.</li>
+<li>Note: payouts must go to an account in the technician's own name.</li>
+<li>Footer <code>Save account</code> (or <code>Continue</code> when opened from another flow).</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li>Saving stores the account, notifies the technician, and returns.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Validation for bank, 10-digit account number and account name.</li>
+</ul>
+<hr>
+<h3 id="48-withdraw">48. Withdraw</h3>
+<ul>
+<li><strong>Route:</strong> <code>/withdraw</code> (<code>src/app/withdraw.tsx</code> → <code>Withdraw</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/payouts/withdraw.tsx</code> → <code>Withdraw</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Request a withdrawal to the bank account.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>Title <em>"Withdraw"</em>.</li>
+<li>Available-to-withdraw card.</li>
+<li><strong>Amount</strong> field (with a <code>Max</code> button) and <strong>Pay into</strong> (bank + change link).</li>
+<li>Note: RepairHub's team checks and pays withdrawals; it shows as Processing until paid.</li>
+<li>Footer <code>Withdraw ₦…</code>.</li>
+</ul>
+<p><strong>Actions</strong></p>
+<ul>
+<li><code>Withdraw ₦…</code> asks for confirmation, submits via the API, and goes to the withdrawal receipt.</li>
+<li><code>Change</code> → Payout account.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>No payout account: prompts to add one first.</li>
+<li>Validates against the ₦1,000 minimum and the available balance.</li>
+</ul>
+<hr>
+<h3 id="49-withdrawal-receipt">49. Withdrawal receipt</h3>
+<ul>
+<li><strong>Route:</strong> <code>/withdraw-done</code> (<code>src/app/withdraw-done.tsx</code> → <code>WithdrawDone</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/payouts/withdraw.tsx</code> → <code>WithdrawDone</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Withdrawal confirmation, status and receipt.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>A status icon, <em>"Withdrawal requested"</em> or <em>"Money sent"</em>, the net amount and a status chip.</li>
+<li>A Stepper: Requested → Processing → Paid.</li>
+<li>Details card: Paid into, Account name, Amount, Fee, You receive, Requested, Expected/Arrived, Reference.</li>
+<li><code>View full receipt</code> and a note to quote the reference for support.</li>
+<li>Footer <code>Back to earnings</code>.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>No withdrawals → empty state.</li>
+</ul>
+<hr>
+<h3 id="50-transaction-details">50. Transaction details</h3>
+<ul>
+<li><strong>Route:</strong> <code>/transaction</code> (<code>src/app/transaction.tsx</code> → <code>TransactionDetail</code>)</li>
+<li><strong>Source:</strong> <code>src/features/technician/payouts/transactions.tsx</code> → <code>TransactionDetail</code></li>
+<li><strong>Role:</strong> Technician</li>
+<li><strong>Purpose:</strong> Full detail/receipt for a wallet credit or a withdrawal.</li>
+</ul>
+<p><strong>On screen</strong></p>
+<ul>
+<li>A header showing the direction (Job payment received / Withdrawal), the amount and a status chip.</li>
+<li>Credits: <strong>Job</strong>, <strong>Breakdown</strong> (customer paid, 10% commission, credited amount) and <strong>Details</strong> cards, with a copyable transaction ID.</li>
+<li>Withdrawals: <strong>Recipient</strong>, <strong>Amount</strong> (with fee) and <strong>Transfer details</strong> cards, plus a status timeline.</li>
+<li>Footer: <code>⬆ Share receipt</code> and <strong>Report a problem with this transaction</strong>.</li>
+</ul>
+<p><strong>States &amp; edge cases</strong></p>
+<ul>
+<li>Unknown transaction → <em>"Transaction not found"</em>.</li>
+</ul>
+  </div>
+</body>
+</html>
