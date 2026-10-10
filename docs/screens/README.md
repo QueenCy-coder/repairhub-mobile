@@ -25,6 +25,12 @@ Every screen entry follows the same template:
 - **Actions** — what each control does and where it goes
 - **States & edge cases** — empty, error, offline, and other variations
 
+## References for technical writers
+
+- **Figma design (Group 9 — Repair Hub):** https://www.figma.com/design/orAUZeW4pHVGIFejPLTjWP/Group-9-Project---Repair-Hub?node-id=0-1&t=yc179zs6Mfv0l5IX-1
+- **Backend API:** https://repairhub-api-1.onrender.com/api · **Swagger docs:** https://repairhub-api-1.onrender.com/api-docs · **Backend repo:** https://github.com/Code4Frankie/RepairHub_api
+- **Screen index:** this document, plus `screens.csv` (machine-readable inventory).
+
 ## Roles
 
 The app has two roles, chosen at sign-up and stored per account:
