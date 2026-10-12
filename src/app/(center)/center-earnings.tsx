@@ -1,0 +1,1 @@
+export { CenterEarnings as default } from '../../features/center/earnings';

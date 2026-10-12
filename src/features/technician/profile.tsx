@@ -47,7 +47,9 @@ export function ServicesCoverage() {
   const save = async () => {
     if (!skills.length || !areas.length) { setTried(true); return; }
     set({ extraServices: extra });
-    if (await run(() => backend.saveTechProfile(get, set, { skills, areas }), 'Services & coverage saved')) router.back();
+    // A service center saves its team's categories the same way (as its own skills).
+    const action = s.api?.role === 'service_center' ? () => backend.saveCenterProfile(get, set, { skills, areas }) : () => backend.saveTechProfile(get, set, { skills, areas });
+    if (await run(action, 'Services & coverage saved')) router.back();
   };
   return (
     <Screen title="Services & Coverage" footer={<Btn title={busy ? 'Saving…' : 'Save changes'} disabled={busy} onPress={save} />}>
@@ -94,11 +96,32 @@ export const PAST_REVIEWS = [
 
 export const DIST: [number, number][] = [[5, 56], [4, 6], [3, 2], [2, 1], [1, 0]];
 
+/** One reply per review (the API keeps a single technician reply). Static/demo reviews have no channel. */
+function ReplyBox({ reviewId, reply }: { reviewId?: string; reply?: string }) {
+  const { get, set, run, busy } = useStore();
+  const [text, setText] = React.useState(reply ?? '');
+  const [done, setDone] = React.useState(!!reply);
+  if (done) return (
+    <View style={{ marginTop: 10, padding: 10, borderRadius: 10, backgroundColor: C.primarySoft }}>
+      <Muted style={{ fontSize: 11 }}>Your reply</Muted>
+      <T style={{ fontSize: 13, marginTop: 2 }}>{text}</T>
+    </View>
+  );
+  if (!reviewId) return null;
+  return (
+    <View style={{ marginTop: 10 }}>
+      <Input value={text} onChangeText={setText} placeholder="Reply to this review…" multiline />
+      <Btn small title={busy ? 'Sending…' : 'Send reply'} variant="sec" disabled={busy || !text.trim()} style={{ alignSelf: 'flex-end', minWidth: 120, marginVertical: 6 }}
+        onPress={async () => { if (await run(() => backend.replyToReview(get, set, reviewId, text), 'Reply sent')) setDone(true); }} />
+    </View>
+  );
+}
+
 export function Reviews() {
   const { s } = useStore();
   const [filter, setFilter] = React.useState<'all' | '5' | '4' | 'low'>('all');
   // Customers' reviews of this technician's finished jobs (from the API).
-  const all = myDoneJobs(s).filter(j => j.rating > 0).map(j => ({ name: j.cust, r: j.rating, text: j.reviewText ?? '', date: shortDate(j.at), job: j.dev, tags: j.tags ?? [], live: false }));
+  const all = myDoneJobs(s).filter(j => j.rating > 0).map(j => ({ name: j.cust, r: j.rating, text: j.reviewText ?? '', date: shortDate(j.at), job: j.dev, tags: j.tags ?? [], reply: j.reply ?? '', reviewId: j.reviewId ?? '', live: false }));
   const total = all.length, dist = DIST.map(([st]) => [st, all.filter(r => r.r === st).length] as [number, number]);
   if (!total) return <Screen title="My reviews"><Empty title="No reviews yet" sub="Reviews from customers appear here after you complete jobs. You can reply once to each." /></Screen>;
   const avg = (dist.reduce((t, [st, n]) => t + st * n, 0) / total).toFixed(1);
@@ -138,6 +161,7 @@ export function Reviews() {
             </Row>
             {r.text ? <T style={{ fontSize: 14, color: C.text, marginTop: 8 }}>{r.text}</T> : <Muted style={{ marginTop: 8 }}>Rated without a written review.</Muted>}
             {r.tags.length ? <Chips>{r.tags.map(t => <Chip key={t} tone="blue" label={t} />)}</Chips> : null}
+            <ReplyBox reviewId={r.reviewId} reply={r.reply} />
           </Card>
         </FadeIn>
       ))}

@@ -1,0 +1,1 @@
+export { CenterAlerts as default } from '../features/center/home';

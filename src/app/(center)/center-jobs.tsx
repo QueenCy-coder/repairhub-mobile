@@ -1,0 +1,1 @@
+export { CenterJobs as default } from '../../features/center/jobs';

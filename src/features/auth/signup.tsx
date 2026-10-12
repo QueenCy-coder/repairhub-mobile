@@ -14,6 +14,7 @@ export const emailError = (e: string) => !e.trim() ? 'Enter your email address' 
 export function Signup() {
   const { s, set, get, toast, run, busy } = useStore();
   const isTech = s.signupRole === 'technician';
+  const isCenter = s.signupRole === 'service_center';
   // A new account starts blank: the user types every field and ticks the terms themselves.
   const [name, setName] = useState<Name>({ first: '', middle: '', last: '' });
   const [phone, setPhone] = useState('');
@@ -21,30 +22,36 @@ export function Signup() {
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
   const [agree, setAgree] = useState(false);
+  const [biz, setBiz] = useState('');
   const [tried, setTried] = useState(false);
   const phoneErr = phoneError(phone);
   const emailErr = emailError(email);
   const pwErr = passwordError(pw);
   const pw2Err = !pw2 ? 'Re-enter your password' : pw2 !== pw ? 'Passwords don’t match' : null;
+  const bizErr = isCenter ? (!biz.trim() ? 'Enter your business name' : null) : null;
   const next = async () => {
     setTried(true);
     if (nameErrors(name)) return toast('Check your name — first and last name are required');
+    if (bizErr) return toast('Enter your business name — customers will see it on your profile');
     if (phoneErr || emailErr || pwErr || pw2Err) return toast('Please fix the fields marked in red');
     if (!agree) return toast('Please accept the Terms & Conditions');
     const role = s.signupRole;
+    // Registration is the gate: the account must exist before leaving this screen. The first refresh
+    // (profile + categories) runs in the background — the next screen loads its own data anyway.
     const ok = await run(async () => {
-      await backend.register({ role, fullName: joinName(name), email, phone, password: pw }, set);
-      await backend.refresh(get, set);
+      await backend.register({ role, fullName: joinName(name), email, phone, password: pw, ...(isCenter ? { businessName: biz.trim() } : {}) }, set);
     });
     if (!ok) return;
+    if (s.api) await backend.refresh(get, set).catch(() => {});
     toast('Account created · welcome to RepairHub');
-    // New customers set up their profile; new technicians register their skills and ID for verification.
-    enterApp(role === 'technician' ? '/tech-register' : '/cust-setup');
+    // New customers set up their profile; new technicians and centers send their details for verification.
+    enterApp(role === 'technician' ? '/tech-register' : role === 'service_center' ? '/center-setup' : '/cust-setup');
   };
   return (
       <Screen title="Create your account" footer={<Btn title={busy ? 'Creating account…' : 'Create Account'} disabled={busy} onPress={next} />}>
-        <Muted style={{ textAlign: 'center', fontSize: 14, marginBottom: 18 }}>Let’s get you started. Enter your details to create your {isTech ? 'technician ' : ''}account.</Muted>
-        <NameFields value={name} onChange={setName} showErrors={tried} hint={isTech ? 'Use the name on your government ID — we check it during verification.' : undefined} />
+        <Muted style={{ textAlign: 'center', fontSize: 14, marginBottom: 18 }}>Let’s get you started. Enter your details to create your {isTech ? 'technician ' : isCenter ? 'service center ' : ''}account.</Muted>
+        <NameFields value={name} onChange={setName} showErrors={tried} hint={isTech ? 'Use the name on your government ID — we check it during verification.' : isCenter ? 'The name of the person managing this account.' : undefined} />
+        {isCenter ? <Field label="Business name" required error={tried && bizErr}><Input icon="◎" value={biz} invalid={tried && !!bizErr} onChangeText={setBiz} placeholder="e.g. Gbagada Phone Repairs" autoCapitalize="words" /></Field> : null}
         <Field label="Email address" required error={tried && emailErr}><Input icon="✉︎" value={email} invalid={tried && !!emailErr} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} textContentType="emailAddress" autoComplete="email" /></Field>
         <Field label="Phone number" required error={tried && phoneErr}><PhoneInput value={phone} onChange={setPhone} invalid={tried && !!phoneErr} /></Field>
         <Field label="Create password" required error={tried && pwErr}><PasswordInput value={pw} onChange={setPw} invalid={tried && !!pwErr} placeholder="At least 8 characters" newPassword /></Field>

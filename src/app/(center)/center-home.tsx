@@ -1,0 +1,1 @@
+export { CenterHome as default } from '../../features/center/home';

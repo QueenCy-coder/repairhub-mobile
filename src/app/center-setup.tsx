@@ -1,0 +1,1 @@
+export { CenterSetup as default } from '../features/center/setup';

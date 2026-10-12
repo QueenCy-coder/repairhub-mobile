@@ -43,6 +43,7 @@ yarn-error.*
 # local settings and test data (never committed)
 .env*.local
 .local-api-db/
+backend-api/
 public/__qa.js
 .DS_Store
 *.pem

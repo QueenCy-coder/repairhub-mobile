@@ -11,6 +11,8 @@ This is the Expo (React Native + TypeScript) app, connected to the **RepairHub A
 
 **Tech-writing reference:** the mobile screen reference (all 50 screens) is in [`docs/screens/`](docs/screens/README.md), with single-file copies at [`SCREENS.md`](SCREENS.md) and [`screens.zip`](screens.zip).
 
+**API connectivity:** every screen-to-endpoint wiring plus the known backend gaps and how to close them is documented in [`docs/API-CONNECTIVITY.md`](docs/API-CONNECTIVITY.md).
+
 ## Run it
 
 Requirements: Node 20+, and the **Expo Go** app on your phone (SDK 57).

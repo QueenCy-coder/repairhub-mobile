@@ -1,0 +1,1 @@
+export { CenterTeam as default } from '../../features/center/team';
