@@ -122,14 +122,25 @@ function signedIn(sess: ApiSession): Partial<State> {
   return { ...common, signupRole: 'customer', fullName: sess.name, phone: key, custIsNew: true };
 }
 
-export async function register(p: { role: Role; fullName: string; email: string; phone: string; password: string; businessName?: string }, set: Set) {
-  const d = await api<{ user: any; token: string }>('POST', '/users/register', { body: { fullName: p.fullName, email: p.email.trim().toLowerCase(), password: p.password, role: p.role, ...(p.phone ? { phone: apiPhone(p.phone) } : {}), ...(p.businessName ? { businessName: p.businessName } : {}) } }).catch(e => {
+/**
+ * Create the account. It starts unverified and no session is started: the person confirms an email
+ * address or phone number with `sendVerificationCode` + `confirmVerification`, then logs in.
+ */
+export async function register(p: { role: Role; fullName: string; email: string; phone: string; password: string; businessName?: string }) {
+  const d = await api<{ user: any }>('POST', '/users/register', { body: { fullName: p.fullName, email: p.email.trim().toLowerCase(), password: p.password, role: p.role, ...(p.phone ? { phone: apiPhone(p.phone) } : {}), ...(p.businessName ? { businessName: p.businessName } : {}) } }).catch(e => {
     throw e instanceof ApiError && e.status === 409 ? new ApiError('An account already uses this email. Log in instead.', 409) : e;
   });
-  const sess = sessionFrom(d.user, d.token);
-  setToken(sess.token);
-  set({ ...signedIn(sess), custOnboarded: false });
-  return sess;
+  return d.user;
+}
+
+/** Send a 6-digit code to the account's email address or phone number (the person chooses which). */
+export async function sendVerificationCode(email: string, channel: 'email' | 'phone') {
+  return api<{ sent: boolean; verified?: boolean; channel: 'email' | 'phone'; destination?: string; code?: string; expiresInMinutes?: number }>('POST', '/users/verify/send', { body: { email: email.trim().toLowerCase(), channel } });
+}
+
+/** Redeem the code and activate the account; the person then logs in. */
+export async function confirmVerification(email: string, code: string) {
+  return api<{ verified: boolean }>('POST', '/users/verify/confirm', { body: { email: email.trim().toLowerCase(), code } });
 }
 
 export async function login(p: { role: Role; email: string; password: string }, set: Set) {

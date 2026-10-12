@@ -38,14 +38,18 @@ Legend: ✅ implemented & wired · ⚠️ implemented but limited / workaround n
 
 | Method | Path | Used by | Status |
 | --- | --- | --- | --- |
-| POST | `/users/register` | Sign up (customer, technician & service centre) | ✅ |
-| POST | `/users/login` | Log in (all three roles) | ✅ |
+| POST | `/users/register` | Sign up (customer, technician & service centre) — creates an **unverified** account | ✅ |
+| POST | `/users/login` | Log in (all three roles) — refused until the account is verified | ✅ |
 | POST | `/users/change-password` | Change password screen | ✅ |
 | PATCH | `/users/:id` | Editing name/phone in profile | ✅ |
 | POST | `/users/forgot-password` | Forgot password — step 1 (email) | ✅ **added** |
 | POST | `/users/reset-password` | Forgot password — step 2 (one-time token + new password) | ✅ **added** |
+| POST | `/users/verify/send` | Sign up — send a 6-digit code to the email **or** phone number | ✅ **added** |
+| POST | `/users/verify/confirm` | Sign up — confirm the code (then log in) | ✅ **added** |
 
 > **Password reset delivery:** there is no SMTP/email service on the backend yet, so the `forgot-password` endpoint returns the one-time reset token (1-hour expiry) in the API response and the app shows it. When an email/SMS provider is added, the token stops coming back in the response and gets delivered instead — the app flow stays the same.
+
+> **Sign-up verification delivery:** a new account confirms an email address **or** a phone number with a 6-digit code before it can log in. There is no SMTP/SMS service yet, so `verify/send` returns the code (10-minute expiry) in the API response and the app presents it on the *Verify your account* screen — the same approach as password reset. Accounts created before verification existed stay verified, so nobody is locked out.
 
 ### 2.2 Categories (used on Home, Request, Technician & Centre services)
 

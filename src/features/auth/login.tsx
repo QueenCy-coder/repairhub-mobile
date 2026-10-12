@@ -1,8 +1,9 @@
 // Log in (role-specific) with email + password, forgotten password, change password.
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable } from 'react-native';
-import { Btn, Card, Field, Input, Link, Muted, Screen, T, Title } from '../../shared/components/ui';
+import { Banner, Btn, Card, Field, Input, Link, Muted, Screen, T, Title } from '../../shared/components/ui';
+import { ApiError } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
 import { passwordError } from '../../shared/core/data';
 import { useStore } from '../../shared/core/store';
@@ -12,6 +13,7 @@ import { emailError } from './signup';
 
 export function Login() {
   const { s, set, get, run, busy } = useStore();
+  const { verified } = useLocalSearchParams<{ verified?: string }>();
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [tried, setTried] = useState(false);
@@ -20,10 +22,17 @@ export function Login() {
     setTried(true);
     if (err || !pw) return;
     const role = s.signupRole;
-    // Only the login itself gates navigation; the first refresh loads the dashboard afterwards.
+    // An account that hasn't confirmed its email/phone can't sign in: send them to the code screen.
+    let unverified = false;
     const ok = await run(async () => {
-      await backend.login({ role, email, password: pw }, set);
+      try {
+        await backend.login({ role, email, password: pw }, set);
+      } catch (e) {
+        if (e instanceof ApiError && e.details && (e.details as { verificationRequired?: boolean }).verificationRequired) { unverified = true; return; }
+        throw e;
+      }
     });
+    if (unverified) { setPw(''); router.push({ pathname: '/verify-account', params: { email: email.trim().toLowerCase() } }); return; }
     if (!ok) { setPw(''); setTried(false); return; }
     if (s.api) await backend.refresh(get, set).catch(() => {});
     const cur = get();
@@ -36,6 +45,7 @@ export function Login() {
       <Screen title="" footer={<><Btn title={busy ? 'Logging in…' : 'Log In'} disabled={busy} onPress={go} /><Muted style={{ textAlign: 'center', marginTop: 14 }}>Don’t have an account? <Link onPress={() => { set({ authMode: 'signup' }); router.replace('/signup'); }}>Create Account</Link></Muted></>}>
         <Title style={{ textAlign: 'center' }}>Welcome Back!</Title>
         <Muted style={{ textAlign: 'center', fontSize: 14, marginBottom: 14 }}>Log in to your {s.signupRole === 'customer' ? 'customer' : s.signupRole === 'technician' ? 'technician' : 'service center'} account to continue.</Muted>
+        {verified === '1' ? <Banner tone="ok" icon="✓">Your account is verified. Log in to continue.</Banner> : null}
         <Field label="Email address" required error={tried && err}><Input icon="✉︎" value={email} invalid={tried && !!err} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} textContentType="emailAddress" autoComplete="email" /></Field>
         <Field label="Password" required error={tried && !pw ? 'Enter your password' : null}><PasswordInput value={pw} onChange={setPw} invalid={tried && !pw} onSubmit={go} /></Field>
         <Pressable onPress={() => router.push('/forgot-password')} style={{ alignSelf: 'flex-end', marginTop: -4 }} hitSlop={8}><Link>Forgot password?</Link></Pressable>

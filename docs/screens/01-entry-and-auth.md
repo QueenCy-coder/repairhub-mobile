@@ -82,14 +82,40 @@ Screens that appear before (or around) being signed in. Shared by both roles.
 - Footer link: *"Already have an account? Log In"*.
 
 **Actions**
-- `Create Account` validates every field, registers via the API, and signs the user in.
-- On success the user is sent to **Set up account** (customer) or **Service profile / registration** (technician).
+- `Create Account` validates every field and registers via the API. The account is created **unverified**.
+- On success the user is sent to **Verify your account** to confirm an email address or phone number.
+- After confirming the code, the user logs in to reach the app.
 - `Log In` link switches to the login screen.
 
 **States & edge cases**
 - Errors appear in red only after the user has tried to submit.
 - Messenger toasts for: check your name, fix fields marked in red, accept the terms.
 - Button shows *"Creating account…"* while working.
+
+---
+
+## 3a. Verify your account
+
+- **Route:** `/verify-account` (`src/app/verify-account.tsx` → `VerifyAccount`)
+- **Source:** `src/features/auth/verify.tsx` → `VerifyAccount`
+- **Role:** Both
+- **Purpose:** Confirms a new account's email address **or** phone number before the first log in.
+
+**How you get there**
+- Automatically after a successful sign-up; or by logging in with an unverified account.
+
+**On screen**
+- Segmented choice: **Email** / **Phone** — the address on file is shown.
+- Six one-digit code boxes; a card shows the code while no email/SMS service is connected.
+- Links: *Resend code*, *Log in instead*.
+
+**Actions**
+- Opening the screen sends a code straight away (10-minute expiry).
+- `Verify & continue` activates the account and returns to **Log in**.
+
+**States & edge cases**
+- A wrong or expired code shows a red hint and clears the boxes.
+- Choosing the other channel sends a fresh code to that address.
 
 ---
 
