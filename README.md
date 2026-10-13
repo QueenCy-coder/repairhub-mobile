@@ -78,7 +78,7 @@ The app checks the newest notification every 12 seconds and reloads in full only
 
 The full list, with evidence and suggested fixes, is in [`BACKEND-NEEDS.md`](BACKEND-NEEDS.md). In short:
 
-- **Blocking:** admin account, service categories (their seed script is an empty file), Cloudinary keys, Paystack keys and webhook, technician approval.
+- **Blocking:** admin account, service categories (Tablets and Desktops are missing), Cloudinary keys, Paystack keys and webhook, technician approval.
 - **Bugs:** quotes can't be edited or re-sent after withdrawing; a wrong current password returns 401 (same as an expired token); after a refund ruling the request stays `in_progress`; the rate limit is per IP; CORS blocks the web preview.
 - **Missing features the app works around:** progress notes without a status change, an "on the way" status, job photos, preferred date/time fields, password reset, distance values, a technician's claims list, push notifications, payout verification, review replies.
 

@@ -184,14 +184,17 @@ export async function updateMe(p: { fullName?: string; phone?: string }, set: Se
 
 /* ───────── categories ───────── */
 
+/** The server's top-level category names, mapped to the names the app uses. */
+const CAT_ALIAS: Record<string, string> = { Phones: 'Smartphones', Televisions: 'TVs', 'Refrigerators & freezers': 'Refrigerators' };
 async function categories(set: Set, get: Get) {
   if (Object.keys(get().catIds ?? {}).length) return get().catIds;
   const list = await api<any[]>('GET', '/service-categories');
-  const map = Object.fromEntries(list.map(c => [c.name, c._id]));
+  // Only top-level categories: sub-categories (Screen replacement, Battery …) are not device types.
+  const map = Object.fromEntries(list.filter(c => !c.parentCategory && c.isActive !== false).map(c => [CAT_ALIAS[c.name] ?? c.name, c._id]));
   set({ catIds: map });
   return map as Record<string, string>;
 }
-const catName = (s: State, id: any) => (typeof id === 'object' && id?.name) || Object.entries(s.catIds ?? {}).find(([, v]) => v === String(id))?.[0] || 'Smartphones';
+const catName = (s: State, id: any) => (typeof id === 'object' && id?.name && (CAT_ALIAS[id.name] ?? id.name)) || Object.entries(s.catIds ?? {}).find(([, v]) => v === String(id))?.[0] || 'Smartphones';
 
 /* ───────── refresh (server → app state) ───────── */
 
@@ -585,6 +588,7 @@ export async function listTechnicians(get: Get, set: Set) {
 export async function submitRequest(get: Get, set: Set) {
   const s = get(), cats = await categories(set, get);
   const form = new FormData();
+  if (!cats[s.cat]) throw new ApiError(`${s.cat} repairs aren’t available yet. Please choose another device type.`, 400);
   form.append('serviceCategoryId', cats[s.cat]);
   form.append('itemType', s.cat);
   form.append('brandModel', s.model.trim());
