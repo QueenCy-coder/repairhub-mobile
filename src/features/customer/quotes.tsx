@@ -114,7 +114,8 @@ export function TechProfile() {
   // The name comes with the link, so a sync update arriving at the same moment can't swap the profile.
   const { name } = useLocalSearchParams<{ name?: string }>();
   const n = name || s.profile, t = techProfile(s, n);
-  const q = quotes(s).find(x => x.name === n);
+  // Only while the customer is still choosing: after that, a technician's profile isn't about that old quote.
+  const q = s.status <= JobStatus.Quoted && !s.cancelled ? quotes(s).find(x => x.name === n) : undefined;
   const canBook = !!q && s.status === JobStatus.Quoted && (!s.jobId || s.sel === q.id);
   const [view, setView] = React.useState<null | { items: { src: number | { uri: string }; caption: string }[]; i: number }>(null);
   const certs = t.certs.map(c => ({ c, src: CERT_IMG[c] }));
@@ -130,7 +131,7 @@ export function TechProfile() {
   const stats: [React.ComponentProps<typeof Ionicons>['name'], string, string][] = [
     t.registered ? ['calendar-outline', joined, 'Joined RepairHub'] : ['briefcase-outline', t.isNew ? 'New' : `${t.years}+`, t.isNew ? 'On RepairHub' : 'Years experience'],
     ['checkmark-done-outline', t.registered || t.isNew ? String(t.jobs) : `${t.jobs}+`, 'Jobs completed'],
-    ['shield-checkmark-outline', q ? plural(q.warr, 'month') : '3 months', 'Warranty'],
+    q ? ['shield-checkmark-outline', plural(q.warr, 'month'), 'Warranty'] : ['chatbubble-ellipses-outline', String(t.reviews), t.reviews === 1 ? 'Review' : 'Reviews'],
   ];
   return (
     <Screen pad={false} footer={canBook

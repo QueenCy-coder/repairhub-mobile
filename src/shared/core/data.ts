@@ -52,7 +52,7 @@ export type Quote = {
   id: string; name: string; rating: number; jobs: number; km: number;
   labour: number; parts: number; days: number; warr: number; note: string; total: number;
   /** From the API: areas served, warranty in days, the technician's profile id, whether this quote was accepted. */
-  areas?: string[]; warrDays?: number; techId?: string; accepted?: boolean; expiresAt?: number;
+  areas?: string[]; reviews?: number; warrDays?: number; techId?: string; accepted?: boolean; expiresAt?: number;
 };
 
 export type State = {
@@ -133,6 +133,8 @@ export type State = {
   techRating?: { avg: number; count: number; jobs: number };
   /** Technician's base location (from their phone or service area), for distances to requests. */
   techPoint?: Point | null;
+  /** Technician: status of each quote they've sent, by request id (pending, accepted, withdrawn, expired…). */
+  quoteStatus?: Record<string, string>;
   /** Unread notifications, as counted by the server. */
   unreadCount?: number;
   wallet?: { balance: number; withdrawable: number };
@@ -444,7 +446,7 @@ export const jobById = (s: State, id: string) => jobs(s).find(j => j.id === id) 
  */
 export type CompletedJob = { id: string; dev: string; cust: string; gross: number; date: string; month: number; cat: string };
 export type DoneJob = { tech: string; id: string; dev: string; cust: string; cat: string; gross: number; at: number; rating: number;
-  custPhone?: string; techName?: string; service?: string; warr?: number; status?: 'Completed' | 'Cancelled'; before?: string; after?: string; reviewText?: string; tags?: string[]; reply?: string; apiJobId?: string; warrDays?: number };
+  custPhone?: string; techName?: string; service?: string; warr?: number; status?: 'Completed' | 'Cancelled'; before?: string; after?: string; reviewText?: string; tags?: string[]; reply?: string; apiJobId?: string; warrDays?: number; warrId?: string; warrUntil?: number };
 const DEMO_TECH_PHONE = '806 221 4490';
 /** The live job, once paid, added to the permanent record (called when the next request starts). */
 export function archiveLiveJob(p: State): DoneJob[] {

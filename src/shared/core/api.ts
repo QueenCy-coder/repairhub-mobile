@@ -68,7 +68,8 @@ export async function apiWithMeta<T = any>(method: 'GET' | 'POST' | 'PATCH' | 'D
   }
   const json = await res.json().catch(() => ({}));
   if (!res.ok || json.success === false) {
-    if (res.status === 401 && token) onUnauthorized?.();
+    // 401 also means "wrong current password" on change-password; only a missing/invalid token ends the session.
+    if (res.status === 401 && token && /not authorized|token/i.test(String(json.message ?? ''))) onUnauthorized?.();
     // Joi errors come back as a list; show the first one in plain words.
     const first = Array.isArray(json.errors) ? json.errors[0]?.message ?? json.errors[0] : undefined;
     throw new ApiError(String(first || json.message || `Request failed (${res.status})`).replace(/"/g, ''), res.status, json.errors);

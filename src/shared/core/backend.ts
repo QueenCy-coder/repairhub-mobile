@@ -128,7 +128,7 @@ export async function login(p: { role: Role; email: string; password: string }, 
 
 export function logout(set: Set) {
   setToken(null);
-  profileFor = ''; afterFor = ''; appointments.clear(); requests.clear(); techProf = null; techReviews = []; baseFilled = false; extrasDue = true; topNote = '';
+  profileFor = ''; afterFor = ''; appointments.clear(); requests.clear(); warrantyInfo.clear(); techProf = null; techReviews = []; baseFilled = false; extrasDue = true; topNote = '';
   set({ ...initialState(), api: null });
 }
 
@@ -171,6 +171,7 @@ export const wantExtras = () => { extrasDue = true; };
 const techProfiles = new Map<string, any>();
 const appointments = new Map<string, any>();
 const requests = new Map<string, any>();
+const warrantyInfo = new Map<string, { id: string; until: number }>();
 let profileFor = '';
 export const forgetAppointment = (id?: string | null) => { if (id) appointments.delete(id); };
 const appointment = async (id?: string | null) => {
@@ -206,7 +207,7 @@ async function loadQuotes(rid: string, get: Get, set: Set, at: Point | null) {
   const list = await api<any[]>('GET', `/quotations/repair-request/${rid}`);
   const quotes: Quote[] = list.map(q => ({
     id: q._id, name: q.technicianId?.userId?.fullName ?? 'Technician', rating: Math.round((q.technicianId?.ratingAvg ?? 0) * 10) / 10, jobs: q.technicianId?.jobsCompleted ?? 0,
-    km: NaN, areas: q.technicianId?.serviceAreas ?? [], labour: q.laborCost ?? 0, parts: q.partsCost ?? 0, total: q.price, days: q.estimatedDays ?? 0,
+    km: NaN, reviews: q.technicianId?.ratingCount ?? 0, areas: q.technicianId?.serviceAreas ?? [], labour: q.laborCost ?? 0, parts: q.partsCost ?? 0, total: q.price, days: q.estimatedDays ?? 0,
     warr: months(q.warrantyDays), warrDays: q.warrantyDays ?? 0, note: q.notes ?? '', techId: q.technicianId?._id, accepted: q.status === 'accepted', expiresAt: ts(q.expiresAt),
   }));
   // Public profiles for the technicians who quoted (skills, bio, experience).
@@ -222,7 +223,7 @@ async function loadQuotes(rid: string, get: Get, set: Set, at: Point | null) {
     const p = profiles[i];
     return { role: 'technician', name: q.name, phone: '', email: '', pwHash: null, provider: 'password', onboarded: true, createdAt: ts(p?.createdAt),
       verif: 'verified', skills: (p?.serviceCategoryIds ?? []).map((c: any) => catName(cur, c)), areas: p?.serviceAreas ?? q.areas ?? [],
-      apiId: q.techId, bio: p?.bio, years: p?.experienceYears, rating: q.rating, reviews: p?.ratingCount ?? 0, jobs: q.jobs } as Account;
+      apiId: q.techId, bio: p?.bio, years: p?.experienceYears, rating: q.rating, reviews: q.reviews ?? 0, jobs: q.jobs } as Account;
   });
   set(p => ({ apiQuotes: quotes, accounts: [...accounts, ...p.accounts.filter(a => !accounts.some(b => b.name === a.name))] }));
   return quotes;
@@ -247,6 +248,10 @@ async function refreshCustomer(get: Get, set: Set) {
 
   // Earlier requests become the history list (finished or cancelled).
   const past = reqs.filter(r => r._id !== live?._id && finished(r));
+  // Warranty id and expiry for each completed repair (the API creates one per completed job; cached, they don't change).
+  await Promise.all(past.map(r => jobOf(r._id)).filter(j => j && j.status === 'completed' && ['released', 'cash_settled'].includes(j.payment?.status)).map(async j => {
+    if (!warrantyInfo.has(j._id)) { const w = await api<any>('GET', `/warranty-records/job/${j._id}`).catch(() => null); if (w) warrantyInfo.set(j._id, { id: w._id, until: ts(w.expiresAt) }); }
+  }));
   // Names of the technicians on earlier jobs (public profiles, cached).
   await Promise.all(past.map(r => jobOf(r._id)?.technicianId).filter(Boolean).map(async (tid: string) => {
     if (!techProfiles.has(String(tid))) techProfiles.set(String(tid), await api<any>('GET', `/technician-profiles/${tid}`).catch(() => null));
@@ -254,7 +259,7 @@ async function refreshCustomer(get: Get, set: Set) {
   const doneJobs: DoneJob[] = past.map(r => {
     const j = jobOf(r._id), u = unpackDesc(r.problemDescription);
     return { tech: j ? String(j.technicianUserId) : '', techName: j ? techProfiles.get(String(j.technicianId))?.userId?.fullName ?? '' : '', custPhone: me, id: shortRef(r._id), dev: r.brandModel || r.itemType, cust: s.fullName, cat: catName(s, r.serviceCategoryId),
-      service: u.desc.split(/[,.]/)[0], gross: j && ['released', 'cash_settled', 'refunded'].includes(j.payment?.status) ? j.price : 0, warr: months(j?.warrantyDays), warrDays: j?.warrantyDays, at: ts(j?.completedAt ?? r.updatedAt), rating: 0,
+      service: u.desc.split(/[,.]/)[0], gross: j && ['released', 'cash_settled', 'refunded'].includes(j.payment?.status) ? j.price : 0, warr: months(j?.warrantyDays), warrDays: j?.warrantyDays, warrId: warrantyInfo.get(j?._id)?.id, warrUntil: warrantyInfo.get(j?._id)?.until, at: ts(j?.completedAt ?? r.updatedAt), rating: 0,
       status: r.status === 'cancelled' || j?.status === 'cancelled' ? 'Cancelled' : 'Completed', before: r.mediaUrls?.[0], apiJobId: j?._id } as DoneJob;
   });
   set({ doneJobs });
@@ -377,6 +382,7 @@ async function refreshTech(get: Get, set: Set) {
   });
   // Nearest first; requests without a location keep their order at the end.
   board.sort((a, b) => (Number.isFinite(a.km) ? a.km : Infinity) - (Number.isFinite(b.km) ? b.km : Infinity));
+  const quoteStatus: Record<string, string> = Object.fromEntries(mine.map(q => [String(q.repairRequestId?._id ?? q.repairRequestId), q.status]));
   const otherQuotes: Record<string, TechQuote> = Object.fromEntries(mine.filter(q => ['pending', 'accepted'].includes(q.status)).map(q => [String(q.repairRequestId?._id ?? q.repairRequestId),
     { labour: q.laborCost ?? 0, parts: q.partsCost ?? 0, days: q.estimatedDays ?? 0, warr: months(q.warrantyDays), note: q.notes ?? '', qid: q._id, status: q.status } as TechQuote]));
   const settled = (j: any) => ['released', 'refunded', 'cash_settled'].includes(j.payment?.status) || j.status === 'cancelled';
@@ -394,8 +400,11 @@ async function refreshTech(get: Get, set: Set) {
       cust: 'Customer', cat: rq ? catName(s, rq.serviceCategoryId) : j.repairRequestId?.itemType ?? 'Smartphones', before: rq?.mediaUrls?.[0], service: unpackDesc(j.repairRequestId?.problemDescription).desc.split(/[,.]/)[0], gross: j.price, warr: months(j.warrantyDays), at: ts(j.completedAt),
       rating: r?.rating ?? 0, reviewText: r?.comment, tags: r?.tags, status: 'Completed', apiJobId: j._id } as DoneJob;
   });
+  // The API keeps bank details only inside each withdrawal: on a new phone, reuse the latest one as the payout account.
+  const lastWd = txns?.find(t => t.type === 'withdrawal' && t.payoutDetails?.accountNumber);
+  if (lastWd && !get().payoutAccount) set({ payoutAccount: { bank: lastWd.payoutDetails.bankName, number: lastWd.payoutDetails.accountNumber, name: lastWd.payoutDetails.accountName } });
   set({
-    board, otherQuotes, doneJobs,
+    board, otherQuotes, quoteStatus, doneJobs,
     ...(wallet ? { wallet: { balance: wallet.balance ?? 0, withdrawable: wallet.withdrawable ?? wallet.balance ?? 0 } } : {}),
     ...(txns ? { apiTxns: txns.map(t => ({ id: t._id, type: t.type, amount: t.amount, status: t.status, at: ts(t.createdAt), ref: t.reference, bank: t.payoutDetails?.bankName, acct: t.payoutDetails?.accountNumber, name: t.payoutDetails?.accountName, jobId: t.repairJobId ? String(t.repairJobId) : undefined })) } : {}),
   });
@@ -530,6 +539,14 @@ export async function fileClaim(get: Get, set: Set, description: string) {
   await api('POST', `/warranty-records/${wid}/claims`, { body: { description } });
   await refresh(get, set);
 }
+/** The warranty record (with its claims) of an earlier completed repair. */
+export const pastWarranty = (jobId: string) => api<any>('GET', `/warranty-records/job/${jobId}`);
+/** File a claim on an earlier repair (not the one currently on screen). */
+export async function fileClaimFor(jobId: string, description: string) {
+  const w = await pastWarranty(jobId);
+  await api('POST', `/warranty-records/${w._id}/claims`, { body: { description } });
+  extrasDue = true;
+}
 export async function openDispute(get: Get, set: Set, reason: string, evidence: Media[]) {
   extrasDue = true;
   const form = new FormData();
@@ -570,17 +587,17 @@ export async function submitVerification(get: Get, set: Set, docs: Media[]) {
   extrasDue = true;
 }
 
+/** One quote per technician per request: the API can't edit a quote, and a withdrawn one still blocks a new one. */
 export async function sendQuote(get: Get, set: Set, requestId: string, q: TechQuote) {
-  const mine = get().otherQuotes[requestId];
-  // A quote can't be edited: withdraw the old one and send the new one.
-  if (mine?.qid) await api('PATCH', `/quotations/${mine.qid}/withdraw`).catch(() => {});
-  const r = await api<any>('POST', '/quotations', { body: { repairRequestId: requestId, laborCost: q.labour, partsCost: q.parts, estimatedDays: q.days, warrantyDays: q.warr * 30, ...(q.note.trim() ? { notes: q.note.trim() } : {}) } });
-  set(p => ({ otherQuotes: { ...p.otherQuotes, [requestId]: { ...q, qid: r._id, status: 'pending' } } }));
+  if (get().quoteStatus?.[requestId]) throw new ApiError('You’ve already sent a quote on this request.', 409);
+  const r = await api<any>('POST', '/quotations', { body: { repairRequestId: requestId, laborCost: q.labour, partsCost: q.parts, estimatedDays: q.days, warrantyDays: q.warr * 30, ...(q.note.trim() ? { notes: q.note.trim() } : {}) } })
+    .catch(e => { throw e instanceof ApiError && /duplicate/i.test(e.message) ? new ApiError('You’ve already sent a quote on this request.', 409) : e; });
+  set(p => ({ otherQuotes: { ...p.otherQuotes, [requestId]: { ...q, qid: r._id, status: 'pending' } }, quoteStatus: { ...p.quoteStatus, [requestId]: 'pending' } }));
 }
 export async function withdrawQuote(get: Get, set: Set, requestId: string) {
   const mine = get().otherQuotes[requestId];
   if (mine?.qid) await api('PATCH', `/quotations/${mine.qid}/withdraw`);
-  set(p => { const o = { ...p.otherQuotes }; delete o[requestId]; return { otherQuotes: o }; });
+  set(p => { const o = { ...p.otherQuotes }; delete o[requestId]; return { otherQuotes: o, quoteStatus: { ...p.quoteStatus, [requestId]: 'withdrawn' } }; });
 }
 
 /** A technician update on the live job: a stage (1–6) or "waiting for parts". */

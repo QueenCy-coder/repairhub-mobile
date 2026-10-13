@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import makeQr from 'qrcode-generator';
 import React from 'react';
 import { View, Pressable, Alert, Text } from 'react-native';
-import { Bold, C, Muted, Row, Btn, Card, CatTile, Chip, KV, Link, Screen, T, Field, Input, Banner, SuccessMark, Timeline, Title } from '../../shared/components/ui';
+import { Bold, C, Muted, Row, Btn, Card, CatTile, Chip, Chips, H4, KV, Link, Screen, T, Field, Input, Banner, SuccessMark, Timeline, Title } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
 import { JobStatus, myPastRequests, repairDate, selectedQuote, shortDate, State, validUntil, warrantyEnd, plural, first } from '../../shared/core/data';
@@ -20,8 +20,8 @@ export function warrantyOf(s: State, id?: string) {
   }
   const j = myPastRequests(s).find(x => x.id === id && x.status === 'Completed' && x.warr);
   if (j) {
-    const end = new Date(j.at); if (j.warrDays) end.setDate(end.getDate() + j.warrDays); else end.setMonth(end.getMonth() + (j.warr ?? 0));
-    return { id: `WR-${j.id.slice(3)}`, repair: j.id, model: j.dev, cat: j.cat, tech: j.techName ?? '', date: shortDate(j.at), until: shortDate(end.getTime()), months: j.warr ?? 0, days: Math.ceil((end.getTime() - Date.now()) / 864e5), live: false };
+    const end = new Date(j.warrUntil || j.at); if (!j.warrUntil) { if (j.warrDays) end.setDate(end.getDate() + j.warrDays); else end.setMonth(end.getMonth() + (j.warr ?? 0)); }
+    return { id: j.warrId ? shortRef(j.warrId, 'WR') : `WR-${j.id.slice(3)}`, repair: j.id, model: j.dev, cat: j.cat, tech: j.techName ?? '', date: shortDate(j.at), until: shortDate(end.getTime()), months: j.warr ?? 0, days: Math.ceil((end.getTime() - Date.now()) / 864e5), live: false };
   }
   return null;
 }
@@ -63,13 +63,15 @@ export const TERMS = 'The warranty starts on the repair date and covers only the
 
 export function Warranty() {
   const { s, toast } = useStore();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id: idParam } = useLocalSearchParams<{ id?: string }>();
+  // No repair named (e.g. opened from a notification): the live repair's warranty, else the latest completed repair's.
+  const id = idParam ?? (warrantyOf(s) ? undefined : myPastRequests(s).find(x => x.status === 'Completed' && x.warr)?.id);
   const w = warrantyOf(s, id);
   if (!w) return <Screen title="Warranty info"><Muted style={{ textAlign: 'center', marginTop: 30 }}>Your digital warranty is created when you confirm the repair, or when the payment auto-releases.</Muted></Screen>;
   const active = w.days > 0;
   const text = `RepairHub warranty ${w.id}\nRepair ${w.repair} · ${w.model}\nTechnician: ${w.tech}\nRepair date: ${w.date}\nValid until: ${w.until}`;
-  const footer = w.live && active
-    ? <Btn title={s.claim ? 'Track claim' : 'Submit warranty claim'} onPress={() => router.push('/claim')} />
+  const footer = active
+    ? <Btn title={w.live ? (s.claim ? 'Track claim' : 'Submit warranty claim') : 'Claims & new claim'} onPress={() => router.push(w.live ? '/claim' : { pathname: '/claim', params: { id: w.repair } })} />
     : undefined;
   return (
     <Screen title="Warranty info" footer={footer} right={<Pressable onPress={async () => { const r = await shareText(`Warranty ${w.id}`, text); if (r === 'copied') toast('Warranty details copied'); }} accessibilityLabel="Share warranty" hitSlop={10}><Ionicons name="share-outline" size={22} color={C.primary} /></Pressable>}>
@@ -112,6 +114,66 @@ export const ISSUES = ['Screen issue', 'Battery issue', 'Charging problem', 'Cam
 export const RESOLUTIONS: [string, React.ComponentProps<typeof Ionicons>['name']][] = [['Repair again', 'construct-outline'], ['Replace part', 'swap-horizontal-outline'], ['Refund', 'cash-outline']];
 
 /* ───────── C-15 Submit warranty claim (Figma) ───────── */
+
+/** Route for /claim: the live repair's claim flow, or (with ?id=) a claim on an earlier repair. */
+export function ClaimRoute() {
+  const { s } = useStore();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  return id && id !== shortRef(s.rid) ? <PastClaim id={id} /> : <Claim />;
+}
+
+/** Claims on an earlier repair: shows what was filed and its status, and lets the customer file a new one while the warranty lasts. */
+function PastClaim({ id }: { id: string }) {
+  const { s, run, busy, toast } = useStore();
+  const j = myPastRequests(s).find(x => x.id === id);
+  const w = warrantyOf(s, id);
+  const [rec, setRec] = React.useState<{ claims: { _id: string; description: string; status: string; resolutionNote?: string; createdAt: string }[] } | null>(null);
+  const [issue, setIssue] = React.useState<string | null>(null);
+  const [same, setSame] = React.useState<boolean | null>(null);
+  const [desc, setDesc] = React.useState('');
+  const [res, setRes] = React.useState<string | null>(null);
+  const [tried, setTried] = React.useState(false);
+  const [adding, setAdding] = React.useState(false);
+  const load = React.useCallback(() => { if (j?.apiJobId) backend.pastWarranty(j.apiJobId).then(setRec).catch(() => setRec({ claims: [] })); }, [j?.apiJobId]);
+  React.useEffect(() => { load(); }, [load]);
+  if (!j || !w) return <Screen title="Warranty claims"><Muted>This repair has no warranty.</Muted></Screen>;
+  if (!rec) return <Screen title="Warranty claims"><Muted style={{ textAlign: 'center', marginTop: 30 }}>Loading…</Muted></Screen>;
+  const active = w.days > 0, hasOpen = rec.claims.some(c => c.status === 'open');
+  const err = { issue: !issue ? 'Choose the issue' : null, same: same === null ? 'Choose Yes or No' : null, desc: desc.trim().length < 15 ? 'Describe the problem in at least 15 characters' : null, res: !res ? 'Choose how you’d like this resolved' : null };
+  const submit = async () => {
+    if (Object.values(err).some(Boolean)) { setTried(true); toast('Please complete the fields marked in red'); return; }
+    const description = `${issue} · Same issue as repaired: ${same ? 'Yes' : 'No'} · Wants: ${res} — ${desc.trim()}`;
+    if (await run(() => backend.fileClaimFor(j.apiJobId!, description), 'Claim sent · the technician has been notified')) { setAdding(false); setIssue(null); setSame(null); setDesc(''); setRes(null); setTried(false); load(); }
+  };
+  const showForm = active && !hasOpen && (adding || !rec.claims.length);
+  return (
+    <Screen title="Warranty claims" footer={showForm ? <Btn title={busy ? 'Sending…' : 'Submit claim'} disabled={busy} onPress={submit} /> : active && !hasOpen ? <Btn title="File a new claim" onPress={() => setAdding(true)} /> : undefined}>
+      <Card tone="strong"><Row style={{ gap: 12 }}><CatTile model={w.model} cat={w.cat} size={52} /><View style={{ flex: 1 }}><Bold>{w.model}</Bold><Muted style={{ fontSize: 12 }}>{w.repair} · {w.id}</Muted></View><View style={{ alignItems: 'flex-end' }}><Chip tone={active ? 'ok' : 'off'} label={active ? 'Active' : 'Expired'} /><Muted style={{ fontSize: 11, marginTop: 2 }}>{active ? `${plural(w.days, 'day')} left` : `ended ${w.until}`}</Muted></View></Row></Card>
+      {rec.claims.map(c => (
+        <Card key={c._id}>
+          <Row><Bold>{shortRef(c._id, 'WC')}</Bold><Chip tone={c.status === 'open' ? 'warn' : c.status === 'resolved' ? 'ok' : 'off'} label={c.status === 'open' ? 'Waiting for the technician' : c.status === 'resolved' ? 'Fixed under warranty' : 'Not covered'} /></Row>
+          <T style={{ fontSize: 14, marginTop: 6 }}>“{c.description}”</T>
+          {c.resolutionNote ? <Muted style={{ marginTop: 6 }}>{`${first(w.tech || 'The technician')}: ${c.resolutionNote}`}</Muted> : null}
+        </Card>
+      ))}
+      {!rec.claims.length && !active ? <Muted style={{ textAlign: 'center', marginTop: 20 }}>This warranty has ended and no claims were filed.</Muted> : null}
+      {hasOpen ? <Banner tone="blue" icon="ℹ︎">The technician has your claim. You can file another once they respond.</Banner> : null}
+      {showForm ? <>
+        <H4>{rec.claims.length ? 'New claim' : 'File a claim'}</H4>
+        <Field label="What issue are you experiencing?" required error={tried && err.issue}>
+          <Chips>{ISSUES.map(o => <Chip key={o} label={o} tone={issue === o ? 'on' : undefined} onPress={() => setIssue(o)} />)}</Chips>
+        </Field>
+        <Field label="Is this the same issue that was repaired?" required error={tried && err.same}>
+          <Row style={{ gap: 10 }}>{([['Yes', true], ['No', false]] as const).map(([l, v]) => <View key={l} style={{ flex: 1 }}><Btn small title={l} variant={same === v ? 'pri' : 'sec'} onPress={() => setSame(v)} style={{ marginTop: 0 }} /></View>)}</Row>
+        </Field>
+        <Field label="Describe the issue" required error={tried && err.desc}><Input invalid={!!(tried && err.desc)} value={desc} onChangeText={t => setDesc(t.slice(0, 500))} multiline placeholder="Tell us what’s happening with the device since the repair" /></Field>
+        <Field label="Preferred resolution" required error={tried && err.res}>
+          <Chips>{RESOLUTIONS.map(([l]) => <Chip key={l} label={l} tone={res === l ? 'on' : undefined} onPress={() => setRes(l)} />)}</Chips>
+        </Field>
+      </> : null}
+    </Screen>
+  );
+}
 
 export function Claim() {
   const { s, set, get, toast, run, busy } = useStore();

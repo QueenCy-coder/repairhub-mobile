@@ -1,1 +1,1 @@
-export { Claim as default } from '../features/customer/warranty';
+export { ClaimRoute as default } from '../features/customer/warranty';

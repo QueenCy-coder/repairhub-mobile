@@ -16,6 +16,9 @@ export const refOf = (id: string, rid?: string | null) => (id === 'RH-0841' ? sh
 
 const NEARBY_KM = 10;
 
+/** Label when a quote was sent on this request but is no longer live (the API allows one quote per request). */
+const closedQuote = (s: { quoteStatus?: Record<string, string> }, id: string) => ({ withdrawn: 'Quote withdrawn', expired: 'Quote expired', rejected: 'Not chosen' } as Record<string, string>)[s.quoteStatus?.[id] ?? ''];
+
 export function Jobs() {
   const { s, set } = useStore();
   const w = useWallet();
@@ -86,7 +89,7 @@ export function Jobs() {
                 <Chips><Chip tone="blue" label={j.cat} /><Chip tone="blue" label={shortIssue(j.issue, 26)} /></Chips>
                 <Btns>
                   <Btn small title="View details" variant="sec" onPress={() => { set({ viewJob: j.id }); router.push('/job-details'); }} />
-                  <Btn small title={mine ? 'Revise quote' : 'Send quote'} disabled={!verified} onPress={() => { set({ viewJob: j.id }); router.push('/send-quote'); }} />
+                  <Btn small title={mine ? 'View quote' : closedQuote(s, j.id) ?? 'Send quote'} variant={mine ? 'sec' : undefined} disabled={!verified || (!mine && !!closedQuote(s, j.id))} onPress={() => { set({ viewJob: j.id }); router.push('/send-quote'); }} />
                 </Btns>
               </Card>
             </FadeIn>
@@ -150,7 +153,7 @@ export function JobDetails() {
   return (
     <Screen title="Job details" footer={booked
       ? isMine(s) && s.status < JobStatus.Released ? <Btn title={s.status === JobStatus.Booked ? 'Respond to booking' : 'Open job'} onPress={() => router.push(s.status === JobStatus.Booked ? '/booking-request' : '/job')} /> : undefined
-      : <Btn title={myQuote(s, j.id) ? 'Revise quote' : 'Send a quote'} disabled={s.techVerif !== 'verified'} onPress={() => router.push('/send-quote')} />}>
+      : <Btn title={myQuote(s, j.id) ? 'View your quote' : closedQuote(s, j.id) ?? 'Send a quote'} disabled={s.techVerif !== 'verified' || (!myQuote(s, j.id) && !!closedQuote(s, j.id))} onPress={() => router.push('/send-quote')} />}>
       <Row><Row style={{ justifyContent: 'flex-start', gap: 10 }}><Avatar label={j.cust} size={40} uri={j.id === 'RH-0841' ? (s.owner?.photo ?? s.custPhoto) : undefined} /><View><Bold style={{ fontSize: 14 }}>{j.cust}</Bold><Muted style={{ fontSize: 12 }}>{refOf(j.id, s.rid)}</Muted></View></Row><Chip tone="blue" label={`${Number.isFinite(j.km) ? `${kmLabel(j.km)} · ` : ''}${j.area}`} /></Row>
       <H4>{j.dev}</H4>
       <T style={{ fontSize: 14, color: C.text, marginTop: -4 }}>{j.issue}</T>
@@ -187,16 +190,27 @@ export function SendQuote() {
     if (!online) return Alert.alert('You’re offline', 'Quotes need a connection so customers see live prices. Job status updates still work offline.');
     if (Object.values(err).some(Boolean)) { setTried(true); toast('Please complete the fields marked in red'); return; }
     const q = { labour: num(labour), parts: num(parts), days: days!, warr: warr!, note: note.trim() };
-    if (await run(() => backend.sendQuote(get, set, j.id, q), `${existing ? 'Quote updated' : 'Quote sent'} · the customer has been notified`)) router.back();
+    if (await run(() => backend.sendQuote(get, set, j.id, q), 'Quote sent · the customer has been notified')) router.back();
   };
-  const withdraw = () => Alert.alert('Withdraw your quote?', 'The customer will no longer see it.', [{ text: 'Keep', style: 'cancel' }, { text: 'Withdraw', style: 'destructive', onPress: async () => {
+  const withdraw = () => Alert.alert('Withdraw your quote?', 'The customer will no longer see it, and you won’t be able to send another quote on this request.', [{ text: 'Keep', style: 'cancel' }, { text: 'Withdraw', style: 'destructive', onPress: async () => {
     if (await run(() => backend.withdrawQuote(get, set, j.id), 'Quote withdrawn')) router.back();
   } }]);
   if (booked) return <Screen title="Send quote"><Empty title="This request is closed" sub={isMine(s) ? 'The customer booked you. Open the job to continue.' : 'The customer chose another technician.'} action={isMine(s) ? 'Open job' : 'Back to jobs'} onPress={() => router.replace(isMine(s) ? '/job' : '/jobs')} /></Screen>;
+  const closed = closedQuote(s, j.id);
+  // A quote can't be edited once sent: show it, and offer to withdraw it.
+  if (existing) return (
+    <Screen title="Your quote" footer={<Btn title="Withdraw quote" variant="danger" disabled={busy} onPress={withdraw} />}>
+      <Card tone="soft"><Row style={{ justifyContent: 'flex-start', gap: 12 }}><CatTile model={j.dev} cat={j.cat} bg="#fff" /><View style={{ flex: 1 }}><Bold style={{ fontSize: 14 }}>{refOf(j.id)} · {j.dev}</Bold><Muted style={{ fontSize: 12 }}>{Number.isFinite(j.km) ? `${kmLabel(j.km)} · ` : ''}{j.area} · {j.mode}</Muted></View></Row></Card>
+      <Banner tone="ok" icon="✓">The customer has your quote and will choose soon.</Banner>
+      <Card><KV k="Labour" v={N(existing.labour)} /><KV k="Parts" v={N(existing.parts)} /><KV k="Customer pays" v={N(existing.labour + existing.parts)} /><KV k="Ready in" v={plural(existing.days, 'day')} /><KV k="Warranty" v={plural(existing.warr, 'month')} />{existing.note ? <KV k="Your note" v={existing.note} /> : null}
+        <View style={{ height: 1, backgroundColor: C.line, marginVertical: 6 }} /><Row><Bold>You receive (after {COMMISSION}%)</Bold><Bold style={{ fontSize: 18 }}>{N(net(existing.labour + existing.parts))}</Bold></Row></Card>
+      <Muted>Quotes can’t be edited once sent. If the price is wrong, withdraw it. After withdrawing you can’t send another quote on the same request.</Muted>
+    </Screen>
+  );
+  if (closed) return <Screen title="Send quote"><Empty title={closed} sub="You can’t send another quote on this request." action="Back to jobs" onPress={() => router.replace('/jobs')} /></Screen>;
   return (
-    <Screen title={existing ? 'Revise quote' : 'Send quote'} footer={<Btn title={busy ? 'Sending…' : `${existing ? 'Update quote' : 'Send quote'}${total ? ` · ${N(total)}` : ''}`} disabled={busy} onPress={send} />}>
+    <Screen title="Send quote" footer={<Btn title={busy ? 'Sending…' : `Send quote${total ? ` · ${N(total)}` : ''}`} disabled={busy} onPress={send} />}>
       <Card tone="soft"><Row style={{ justifyContent: 'flex-start', gap: 12 }}><CatTile model={j.dev} cat={j.cat} bg="#fff" /><View style={{ flex: 1 }}><Bold style={{ fontSize: 14 }}>{refOf(j.id)} · {j.dev}</Bold><Muted style={{ fontSize: 12 }}>{Number.isFinite(j.km) ? `${kmLabel(j.km)} · ` : ''}{j.area} · {j.mode}</Muted><T style={{ fontSize: 12, color: C.mute, lineHeight: 16 }} numberOfLines={2}>{j.issue}</T></View></Row></Card>
-      {existing ? <Banner tone="blue" icon="ℹ︎">{`Your current quote: ${N(existing.labour + existing.parts)} · ${plural(existing.days, 'day')} · ${plural(existing.warr, 'month')} warranty`}</Banner> : null}
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={{ flex: 1 }}><Field label="Labour (₦)" required error={tried && err.labour}><Input invalid={tried && !!err.labour} value={grouped(labour)} onChangeText={t => setLabour(t.replace(/\D/g, '').replace(/^0+/, '').slice(0, 7))} keyboardType="number-pad" placeholder="e.g. 6000" /></Field></View>
         <View style={{ flex: 1 }}><Field label="Parts (₦)"><Input value={grouped(parts)} onChangeText={t => setParts(t.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 7))} keyboardType="number-pad" placeholder="0 if none" /></Field></View>
@@ -205,8 +219,7 @@ export function SendQuote() {
       <Field label="Warranty" required error={tried && err.warr}><NumberChoice options={[1, 2, 3, 6]} value={warr} onChange={setWarr} unit="month" max={24} invalid={!!(tried && err.warr)} /></Field>
       <Field label="Note to customer (optional)"><Input value={note} onChangeText={setNote} multiline placeholder="Part quality, what’s included, how long it takes on site…" /></Field>
       <Card tone="blue"><KV k="Customer pays" v={N(total)} /><KV k={`RepairHub commission (${COMMISSION}%)`} v={`−${N(total * COMMISSION / 100)}`} /><View style={{ height: 1, backgroundColor: C.primaryLine, marginVertical: 4 }} /><Row><Bold>You receive</Bold><Bold style={{ fontSize: 18 }}>{N(net(total))}</Bold></Row></Card>
-      <Muted>Valid for 7 days. You can revise or withdraw it until the customer chooses. Include travel in your price for home service.</Muted>
-      {existing ? <Btn title="Withdraw quote" variant="danger" onPress={withdraw} /> : null}
+      <Muted>Valid for 7 days. You can withdraw it until the customer chooses, but it can’t be edited or re-sent, so check the price first. Include travel in your price for home service.</Muted>
     </Screen>
   );
 }

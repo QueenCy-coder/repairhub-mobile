@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RepairHub API Integration Report</title>
+<style>
+  :root {
+    --bg: #f7f8fa; --card: #ffffff; --ink: #101828; --text: #344054; --mute: #667085; --line: #e4e7ec;
+    --blue: #2f5fe0; --blue-soft: #eef3ff; --ok: #067647; --ok-soft: #ecfdf3; --warn: #b54708; --warn-soft: #fffaeb;
+    --bad: #b42318; --bad-soft: #fef3f2; --code: #f2f4f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0c111d; --card: #161b26; --ink: #f5f5f6; --text: #cecfd2; --mute: #94969c; --line: #2a303c;
+      --blue: #7aa2ff; --blue-soft: #1a2440; --ok: #47cd89; --ok-soft: #0e2a1d; --warn: #fdb022; --warn-soft: #2e2210;
+      --bad: #f97066; --bad-soft: #321613; --code: #1f2533;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0c111d; --card: #161b26; --ink: #f5f5f6; --text: #cecfd2; --mute: #94969c; --line: #2a303c;
+    --blue: #7aa2ff; --blue-soft: #1a2440; --ok: #47cd89; --ok-soft: #0e2a1d; --warn: #fdb022; --warn-soft: #2e2210;
+    --bad: #f97066; --bad-soft: #321613; --code: #1f2533;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { color: var(--ink); font-size: 28px; line-height: 1.25; margin: 0 0 6px; }
+  h2 { color: var(--ink); font-size: 20px; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { color: var(--ink); font-size: 16px; margin: 22px 0 8px; }
+  p { margin: 8px 0; }
+  .sub { color: var(--mute); margin: 0 0 20px; }
+  code { background: var(--code); border-radius: 5px; padding: 1px 6px; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); overflow-wrap: anywhere; }
+  .verdict { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 20px 0; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .tile b { display: block; color: var(--ink); font-size: 17px; margin: 6px 0 4px; }
+  .tile small { color: var(--mute); }
+  .pill { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+  .ok { background: var(--ok-soft); color: var(--ok); }
+  .warn { background: var(--warn-soft); color: var(--warn); }
+  .bad { background: var(--bad-soft); color: var(--bad); }
+  .info { background: var(--blue-soft); color: var(--blue); }
+  .table-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+  table { border-collapse: collapse; width: 100%; min-width: 620px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th { color: var(--mute); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; background: var(--bg); }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { color: var(--ink); font-weight: 600; }
+  ul, ol { padding-left: 22px; margin: 8px 0; }
+  li { margin: 5px 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; margin: 12px 0; }
+  .card h3 { margin-top: 4px; }
+  .who { color: var(--mute); font-size: 13px; }
+  footer { margin-top: 48px; color: var(--mute); font-size: 13px; }
+  a { color: var(--blue); }
+</style>
+</head>
+<body>
+<main>
+  <h1>RepairHub mobile app × RepairHub API</h1>
+  <p class="sub">Integration status report · updated 14 October 2026 · Group 9 capstone · App repo: <a href="https://github.com/QueenCy-coder/repairhub-mobile">QueenCy-coder/repairhub-mobile</a> · API: <code>https://repairhub-api-1.onrender.com/api</code></p>
+
+  <div class="verdict">
+    <div class="tile"><span class="pill ok">Linked</span><b>The app is wired to the API</b><small>All 50 API calls the app makes exist on the live server’s published spec (the live server offers 66 endpoints). The GitHub version points at the live server by default.</small></div>
+    <div class="tile"><span class="pill ok">Tested</span><b>Every flow works end to end</b><small>Tested against the same backend code running locally: customer and technician, web and iPhone (Simulator).</small></div>
+    <div class="tile"><span class="pill bad">Blocked on live</span><b>The live server isn’t set up yet</b><small>Checked today: it answers, but has 0 categories, 0 technicians and no admin. Without these, nobody can create a repair request or send a quote.</small></div>
+  </div>
+
+  <h2>1. Short answer</h2>
+  <p><b>Yes, the API is linked.</b> Every screen of the app now reads from and writes to the RepairHub API. Nothing is faked or stored only on the phone, except a few things the API has no place for (listed in section 5).</p>
+  <p><b>On the live server, only the first steps work today:</b> sign-up, login, customer address and technician registration. Everything after that needs the backend team to set up the server (section 4). Once they do, no app code changes are needed.</p>
+
+  <h2>2. How it was checked</h2>
+  <ul>
+    <li><b>Against the live server’s published API spec:</b> each of the app’s 50 calls was matched against <code>/api-docs.json</code>, with the right method. None are missing.</li>
+    <li><b>Live server status today:</b> <code>/health</code> answers OK, but it takes about 30 seconds to wake up from sleep. <code>/service-categories</code> and <code>/technician-profiles</code> both return empty lists.</li>
+    <li><b>Full end-to-end runs against the backend code</b> (<a href="https://github.com/Code4Frankie/RepairHub_api">Code4Frankie/RepairHub_api</a>, latest commit <code>57ad3f3</code>) running on a laptop with its own test database. Paystack used the API’s test mode, and uploads were saved locally instead of Cloudinary.</li>
+    <li><b>Native check on the iPhone Simulator:</b> login, staying signed in after the app is closed, and a repair request with a photo from the photo library, which arrived on the server.</li>
+    <li>I did not create test accounts on the live server; that’s for the team to do.</li>
+  </ul>
+
+  <h2>3. Area-by-area status</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Area</th><th>API endpoints used</th><th>Tested (local)</th><th>Live today</th></tr></thead>
+    <tbody>
+      <tr><td>Sign up / log in</td><td><code>POST /users/register</code>, <code>/users/login</code>, <code>/users/change-password</code>, <code>PATCH /users/:id</code></td><td><span class="pill ok">Works</span></td><td><span class="pill ok">Works</span></td></tr>
+      <tr><td>Customer profile</td><td><code>GET /customer-profiles/me</code>, <code>PATCH /customer-profiles/:id</code></td><td><span class="pill ok">Works</span></td><td><span class="pill ok">Works</span></td></tr>
+      <tr><td>Technician registration</td><td><code>GET /technician-profiles/me</code>, <code>PATCH /technician-profiles/:id</code>, <code>POST …/verification-docs</code></td><td><span class="pill ok">Works</span></td><td><span class="pill warn">Needs categories + Cloudinary</span></td></tr>
+      <tr><td>Technician approval</td><td>admin: <code>PATCH /technician-profiles/:id/verify</code></td><td><span class="pill ok">Works</span></td><td><span class="pill bad">No admin</span></td></tr>
+      <tr><td>Repair requests (with photos)</td><td><code>POST /repair-requests</code> (multipart), <code>GET /repair-requests</code>, <code>PATCH …/cancel</code></td><td><span class="pill ok">Works</span></td><td><span class="pill bad">No categories</span></td></tr>
+      <tr><td>Quotes</td><td><code>POST /quotations</code>, <code>GET /quotations/mine</code>, <code>GET /quotations/repair-request/:id</code>, <code>PATCH …/accept</code>, <code>…/withdraw</code></td><td><span class="pill ok">Works</span></td><td><span class="pill bad">Blocked</span></td></tr>
+      <tr><td>Booking</td><td><code>POST /appointments</code>, <code>GET /appointments/:id</code>, <code>PATCH …/reschedule</code>, <code>…/cancel</code></td><td><span class="pill ok">Works</span></td><td><span class="pill bad">Blocked</span></td></tr>
+      <tr><td>Payment into escrow</td><td><code>POST /transactions/pay</code> (Paystack or cash), <code>GET /transactions/verify/:ref</code></td><td><span class="pill ok">Works</span> (test mode)</td><td><span class="pill bad">Blocked</span>, then needs Paystack keys</td></tr>
+      <tr><td>Job progress</td><td><code>GET /repair-jobs</code>, <code>GET /repair-jobs/:id</code>, <code>PATCH …/status</code>, <code>POST …/confirm</code></td><td><span class="pill ok">Works</span></td><td><span class="pill bad">Blocked</span></td></tr>
+      <tr><td>Reviews</td><td><code>POST /reviews</code>, <code>GET /reviews/technician/:id</code></td><td><span class="pill ok">Works</span></td><td><span class="pill bad">Blocked</span></td></tr>
+      <tr><td>Warranty and claims</td><td><code>GET /warranty-records/job/:id</code>, <code>POST …/claims</code>, <code>PATCH …/claims/:claimId</code></td><td><span class="pill ok">Works</span></td><td><span class="pill bad">Blocked</span></td></tr>
+      <tr><td>Reporting a problem</td><td><code>POST /disputes</code>, <code>GET /disputes</code> (admin resolves)</td><td><span class="pill ok">Works</span></td><td><span class="pill bad">Blocked</span></td></tr>
+      <tr><td>Wallet and withdrawals</td><td><code>GET /wallets/me</code>, <code>POST /wallets/withdraw</code>, <code>GET /transactions/me</code></td><td><span class="pill ok">Works</span></td><td><span class="pill bad">Blocked</span></td></tr>
+      <tr><td>Notifications</td><td><code>GET /notifications</code>, <code>PATCH …/:id/read</code>, <code>…/read-all</code></td><td><span class="pill ok">Works</span></td><td><span class="pill ok">Works</span></td></tr>
+      <tr><td>Find a technician</td><td><code>GET /technician-profiles</code>, <code>GET /technician-profiles/:id</code></td><td><span class="pill ok">Works</span></td><td><span class="pill warn">Empty until technicians are approved</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>4. What the backend team needs to do</h2>
+
+  <div class="card">
+    <h3><span class="pill bad">Blocking</span> Needed before the app works on the live server</h3>
+    <ol>
+      <li><b>Create an admin account on Render.</b> Run <code>ADMIN_EMAIL=… ADMIN_PASSWORD=… npm run seed:admin</code> with the Render <code>MONGO_URI</code>. Admins can’t sign up through the API.</li>
+      <li><b>Add the service categories.</b> <code>scripts/seedCategories.js</code> is an empty file, so <code>npm run seed:categories</code> does nothing. The app expects exactly these names:
+        <ul>
+          <li><code>Smartphones</code>, <code>Laptops</code>, <code>Tablets</code>, <code>Desktops</code>, <code>Printers</code> (active)</li>
+          <li><code>TVs</code>, <code>Refrigerators</code> (inactive, shown as “coming soon”)</li>
+        </ul>
+        An admin can also create them with <code>POST /service-categories</code>. Cynthia has a ready-made script for this (<code>seed-categories.sh</code>): it asks for the admin email and password and creates them.</li>
+      <li><b>Approve technicians.</b> After a technician uploads their ID, an admin approves them with <code>PATCH /technician-profiles/:id/verify {"decision":"approve"}</code>. Until then they can’t see requests or send quotes.</li>
+      <li><b>Cloudinary keys on Render</b> (<code>CLOUDINARY_CLOUD_NAME</code>, <code>_API_KEY</code>, <code>_API_SECRET</code>). Request photos, ID documents and dispute evidence all upload there.</li>
+      <li><b>Paystack set-up for real payments:</b>
+        <ul>
+          <li>Set <code>PAYSTACK_SECRET_KEY</code> (a test key first), and keep <code>PAYSTACK_MOCK</code> off in production.</li>
+          <li>Point the Paystack dashboard webhook to <code>https://repairhub-api-1.onrender.com/api/transactions/webhook/paystack</code>. The app waits for this confirmation before showing “Booking confirmed”.</li>
+          <li>Optionally set <code>PAYSTACK_CALLBACK_URL</code> to a simple “Payment received, return to the app” page.</li>
+        </ul></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h3><span class="pill warn">Should fix</span> Problems found while testing</h3>
+    <ul>
+      <li><b>Rate limit vs shared Wi-Fi.</b> The API allows 300 requests per 15 minutes <i>per IP address</i>. The app stays well under that per phone (about 5 requests a minute when idle). But on campus or office Wi-Fi many phones share one IP, so a demo with several people in the same room could hit the limit (“Too many requests”). Consider raising it, or limiting per user instead of per IP.</li>
+      <li><b>After a full-refund ruling on a dispute,</b> the job becomes <code>cancelled</code> but the repair request stays <code>in_progress</code> (in <code>resolveDispute</code>). The app works around it, but the data is inconsistent.</li>
+      <li><b>Browser CORS:</b> the live server only allows <code>CLIENT_URL</code>, so the web preview can’t call it from <code>localhost</code>. Phones are not affected. Add test origins, or open it up for development.</li>
+      <li><b>Cold start:</b> Render’s free tier sleeps. The first request after a quiet period takes about 30 seconds. The app waits up to 70 seconds and shows a message, but a paid instance or a keep-alive ping would make demos smoother.</li>
+      <li><code>scripts/generatePostman.js</code> is also an empty file.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="pill info">Nice to have</span> Fields and endpoints the app works around today</h3>
+    <ul>
+      <li><b>Preferred date, time and service type on a request:</b> the request schema has no fields for these. The app adds them to the end of <code>problemDescription</code> (“Preferred: Thu 8 Oct · 10:00 AM – 1:00 PM · Home service”) and reads them back. Suggested fields: <code>preferredDate</code>, <code>preferredTime</code>, <code>serviceMode</code>.</li>
+      <li><b>Technician progress and completion photos:</b> there’s no upload on repair jobs, so the app removed the photo step. Suggested: <code>POST /repair-jobs/:id/media</code>.</li>
+      <li><b>More job stages:</b> the app has six technician steps (on the way, started, diagnosed, repairing, testing, done). The API’s statuses cover four of them; “Diagnosis completed” and “Repair in progress” are kept only on the technician’s phone. Also, the API has no “on the way” status, so the app uses <code>diagnosing</code> for it.</li>
+      <li><b>Review replies</b> (a technician answering a review): not available.</li>
+      <li><b>Password reset by email:</b> not available. The app shows “contact support” for now.</li>
+      <li><b>Warranty claims for a technician:</b> there’s no “my claims” list, so the app looks up each finished job’s warranty. Suggested: <code>GET /warranty-records/mine</code>. Claim evidence (photos) also isn’t accepted.</li>
+      <li><b>Names on open requests and reviews:</b> technicians see “Customer” instead of a first name and last initial (e.g. “Ada O.”). Suggested: add <code>customerDisplayName</code>.</li>
+      <li><b>Missing notifications:</b> when a quote is withdrawn or a request cancelled, the other side gets no notification. The app catches it on its 2-minute refresh.</li>
+      <li><b>Real push notifications:</b> the API has no device tokens or Expo push. The app checks for new notifications while it’s open.</li>
+    </ul>
+  </div>
+
+  <h2>5. What’s done in the app</h2>
+  <h3>Connected to the API</h3>
+  <ul>
+    <li><b>Accounts:</b> email + password sign-up and login, no code step. Wrong role, wrong password and duplicate email give clear messages. You stay signed in after closing the app. There’s also change password and log out.</li>
+    <li><b>Customers:</b>
+      <ul>
+        <li>home address saved on the server;</li>
+        <li>request a repair with up to 5 photos and a video, then cancel it or compare real quotes;</li>
+        <li>technician profiles with real ratings and completed jobs;</li>
+        <li>book, then pay by Paystack (card, transfer or USSD) or cash after the repair;</li>
+        <li>reschedule or cancel (refund if paid), track the repair live, confirm and release payment;</li>
+        <li>leave a review, view the warranty and file a claim, report a problem;</li>
+        <li>repair history with refunds and warranties, and a notifications list.</li>
+      </ul></li>
+    <li><b>Technicians:</b>
+      <ul>
+        <li>register skills, areas, ID and certificate; the screen updates by itself when approved or rejected;</li>
+        <li>job board for their categories; send, revise or withdraw quotes;</li>
+        <li>active job with every stage, pause for parts, and an offline queue that sends updates when back online;</li>
+        <li>answer warranty claims (fixed / not covered);</li>
+        <li>earnings, wallet, transactions, reviews, payout account and withdrawals.</li>
+      </ul></li>
+    <li><b>Staying up to date:</b> every 12 seconds the app checks the newest notification and reloads in full only when something changed, plus a full reload every 2 minutes and after the person’s own actions. This keeps each phone under the API’s rate limit. New notifications show as a banner and a phone notification.</li>
+    <li><b>Configurable server:</b> the API address lives in <code>.env</code> (live server). Developers can use <code>.env.local</code> to point at their own copy, and <code>tools/run-local-api.mjs</code> runs the backend locally with a test database.</li>
+  </ul>
+
+  <h3>Removed because the API can’t support them yet</h3>
+  <ul>
+    <li>Sample technicians, automatic quotes and automatic approvals: everything is real now.</li>
+    <li>The ₦2,000 home-service fee. The API charges exactly the quote, so technicians include travel in their price. Commission shows 10%, matching the API.</li>
+    <li>Phone code (OTP) at sign-up, and Google / Apple sign-in.</li>
+    <li>BVN, selfie and PIN checks for payouts. The API only needs bank name, account number and account name; RepairHub’s team pays withdrawals.</li>
+    <li>Technician progress photos, review replies and claim evidence uploads.</li>
+  </ul>
+
+  <h3>Bugs found and fixed during integration</h3>
+  <ul>
+    <li>The first version would have been blocked by the rate limit within about 3 minutes; polling was redesigned.</li>
+    <li>Photo uploads failed on phones (Expo’s new <code>fetch</code> rejects file parts); uploads now go through the native uploader.</li>
+    <li>Times read wrong: “4:00 – 6:00 PM” was read as 4 AM, and rescheduled visits showed the old time.</li>
+    <li>Preferred date and time were lost after upload, because browsers change line breaks.</li>
+    <li>A technician’s “Diagnosis completed” step could disappear during a refresh or after a pause for parts.</li>
+    <li>Old notifications popped up as new after logging in.</li>
+    <li>A refunded job showed as “Not booked yet”.</li>
+    <li>Wrong technician name and warranty days in history.</li>
+    <li>The warranty-claim alert didn’t clear after it was answered.</li>
+    <li>A stock “after” photo appeared as if the technician took it.</li>
+    <li>Distances showed as “NaN km” (the API has no distances; the app shows areas instead).</li>
+  </ul>
+
+  <h2>6. What’s left</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Item</th><th>Who</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Admin, categories, Cloudinary, Paystack on Render</td><td>Backend</td><td>Section 4. This is the only thing blocking the live app.</td></tr>
+      <tr><td>Live end-to-end test</td><td>App + backend</td><td>Once section 4 is done: run the checklist in section 7 on two phones.</td></tr>
+      <tr><td>Real Paystack payment on a phone</td><td>App + backend</td><td>Only test mode has been run. Needs the Paystack test key and webhook on Render.</td></tr>
+      <tr><td>Point the app on Cynthia’s Mac at the live server</td><td>App</td><td><span class="pill ok">Done 8 Oct</span> Phones on Expo Go now use the live server.</td></tr>
+      <tr><td>Wake the server early, keep it awake</td><td>App</td><td><span class="pill ok">Done 8 Oct</span> The app pings the server on launch. A scheduled GitHub check pings it every 10 minutes (Actions → “Keep API awake”; disable it there after the demo).</td></tr>
+      <tr><td>Fields and endpoints in section 4 (“nice to have”)</td><td>Backend</td><td>Once added, the app can drop its workarounds (description text, phone-only stages).</td></tr>
+      <tr><td>SwiftUI version</td><td>App</td><td>Still the earlier offline demo; not connected to the API.</td></tr>
+      <tr><td>Demo build (purple demo buttons)</td><td>App</td><td>Kept on the Mac for presenting offline; still uses the local sync server; not on GitHub.</td></tr>
+      <tr><td>Store builds (TestFlight / Play)</td><td>App</td><td>Not started. The app runs in Expo Go and a development build.</td></tr>
+      <tr><td>Clean-up</td><td>App</td><td><span class="pill ok">Done 8 Oct</span> Removed the unused payout ID-check screens and 90+ unused leftovers; ESLint shows 0 errors. Two bugs found and fixed: an approved technician could land on registration after logging in, and the warranty-claim note box lost focus while typing.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>7. Latest end-to-end test (13–14 October)</h2>
+  <p>Run against the backend code on a laptop (test database, Paystack test mode), with brand-new accounts: a customer and a technician in two browser sessions, plus the iPhone Simulator earlier. The admin steps (approving technicians, paying withdrawals, ruling on disputes) were done with the local admin account.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Flow</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Customer sign-up with bad input (empty form, bad email, short or mismatched password), then success; address set-up</td><td><span class="pill ok">Passed</span></td></tr>
+      <tr><td>Technician sign-up and registration (refused without documents; accepted with ID + certificate); locked until approved; unlocks within seconds of approval</td><td><span class="pill ok">Passed</span></td></tr>
+      <tr><td>Technician rejected by admin → sees the reason → uploads a new photo → approved</td><td><span class="pill ok">Passed</span></td></tr>
+      <tr><td>Repair request: validation (short description, no photo, missing date/time, unticked box), submit with a photo, one-open-request rule</td><td><span class="pill ok">Passed</span></td></tr>
+      <tr><td>Job board: nearest first with distances, quote with commission preview, read-only quote screen, withdrawn quotes remembered</td><td><span class="pill ok">Passed</span> (after fix 1)</td></tr>
+      <tr><td>Compare, select, book, pay through Paystack (waiting screen, “not received yet”, confirmation by the signed notice), leaving and returning mid-payment</td><td><span class="pill ok">Passed</span></td></tr>
+      <tr><td>Technician job: customer contact sheet, every stage, completion; customer confirms and releases; 4-star review</td><td><span class="pill ok">Passed</span></td></tr>
+      <tr><td>Warranty card (real dates), claim validation, claim → technician rejects with a reason → customer sees it; claim on an <i>earlier</i> repair</td><td><span class="pill ok">Passed</span> (after fix 5)</td></tr>
+      <tr><td>Earnings, rating, bank account, withdrawal limits (above balance, below ₦1,000), withdrawal marked paid by admin</td><td><span class="pill ok">Passed</span></td></tr>
+      <tr><td>Log out and in; new phone (saved data cleared): requests, history, warranties, earnings and payout account come back</td><td><span class="pill ok">Passed</span> (after fix 4)</td></tr>
+      <tr><td>Change password (wrong, weak, mismatched, correct); forgot-password screen</td><td><span class="pill ok">Passed</span> (after fix 2)</td></tr>
+      <tr><td>Expired login → back to Welcome with a message; server unreachable → clear message, stays signed in, recovers by itself</td><td><span class="pill ok">Passed</span></td></tr>
+      <tr><td>Problem report and refund, cancelling after payment, cash booking, rescheduling, withdrawal</td><td><span class="pill ok">Passed</span> in the earlier 6 Oct run; not repeated</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Bugs found in this run and fixed</h3>
+  <ol>
+    <li><b>“Revise quote” destroyed the quote.</b> The API has no way to edit a quote, and a withdrawn quote blocks a new one, so the technician lost their quote. Quotes are now final in the app: the technician sees a read-only summary, a clear warning before withdrawing, and a “Quote withdrawn” label afterwards.</li>
+    <li><b>A wrong current password signed the user out.</b> The server uses the same 401 code as for an expired login. Now only real session errors end the session.</li>
+    <li><b>Technician profile errors:</b> “no reviews yet” despite a review (stale data), the finished repair’s quote shown when opened from search, and an invented “3 months” warranty. All fixed.</li>
+    <li><b>The payout account was lost on a new phone.</b> It is now rebuilt from the latest withdrawal.</li>
+    <li><b>Earlier repairs couldn’t be claimed on.</b> Once a customer started a new repair, the older warranty vanished from Profile and had no claim button; warranty IDs also changed. Now every completed repair’s warranty is listed (“1 active”), keeps its real ID, shows past claims and their status, and accepts new claims.</li>
+    <li>Smaller: the Home card hint “finish paying” now reads “pay to confirm”; and the earlier fixes from 8 October (technician redirected to registration after login, note box losing focus).</li>
+  </ol>
+
+  <h3>Not tested</h3>
+  <ul>
+    <li>A real Paystack payment (only test mode with a locally signed confirmation).</li>
+    <li>The technician’s offline queue on a phone (web has no offline mode), the camera, push notifications and the phone’s location prompt on a real device (the Simulator was used for login and photo upload only).</li>
+    <li>Android, and the live server itself (it has no categories yet).</li>
+  </ul>
+
+  <h2>8. The team’s list of missing endpoints, checked against the backend code</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Item</th><th>Verdict</th><th>What the code shows</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Progress and completion photos on jobs</td><td><span class="pill ok">Correct</span></td><td>The repair-job model and routes have no media field or upload route.</td></tr>
+      <tr><td>2</td><td>“On the way” job status</td><td><span class="pill ok">Correct</span></td><td>Job statuses are accepted, diagnosing, awaiting_parts, in_progress, quality_check, ready, on_hold, completed, disputed, cancelled. There’s no “on the way” status.</td></tr>
+      <tr><td>3</td><td>Forgot and reset password</td><td><span class="pill ok">Correct</span></td><td>User routes: register, login, me, change-password (needs the old password), and admin routes. No forgot or reset.</td></tr>
+      <tr><td>4</td><td>Distance on quotes and job board, location filters</td><td><span class="pill warn">Half right</span></td><td>Filters <b>already exist</b>: <code>GET /repair-requests?lng=&amp;lat=&amp;radiusKm=</code> and the same on <code>/technician-profiles</code>. What’s missing is a <b>distance value</b> in the responses. <span class="pill ok">App side done 8 Oct</span> The app now saves locations (the phone’s position when shared, otherwise the address’s Lagos area) on requests, customer profiles and technician profiles. It shows the distance on the job board and quotes, sorts nearest first, and has a “Within 10 km” filter.</td></tr>
+      <tr><td>5</td><td>List of warranty claims on a technician’s jobs</td><td><span class="pill ok">Correct</span></td><td>Warranty routes only offer by job and by id. The app currently checks each finished job.</td></tr>
+      <tr><td>6</td><td>Push tokens; unread count or <code>?since=</code></td><td><span class="pill warn">Half right</span></td><td>No push-token endpoint or push sending: correct. But the <b>unread count already exists</b>: <code>GET /notifications</code> returns <code>meta.unreadCount</code>, and <code>?unread=true</code> filters. Only <code>?since=</code> is missing. <span class="pill ok">App side done 8 Oct</span> The notification badge now uses the server’s <code>unreadCount</code>.</td></tr>
+      <tr><td>7</td><td>Payout verification (BVN, selfie, PIN, bank name lookup)</td><td><span class="pill ok">Correct</span></td><td>Nothing in the backend: withdrawals take bank name, account number and account name, and an admin marks them paid. Note this is a product decision as much as a gap: BVN and liveness checks need a paid provider (e.g. Paystack’s resolve-account API, or a KYC vendor).</td></tr>
+      <tr><td>8</td><td>Job detail returns the other party’s phone</td><td><span class="pill ok">Confirmed: already works</span></td><td><code>GET /repair-jobs/:id</code> returns <code>contact: { name, phone }</code> of the other side, and the app’s Call buttons use it (tested). Phone is optional at sign-up in the API, but the app always asks for it.</td></tr>
+      <tr><td>9</td><td>Earnings “this week” and percentage change</td><td><span class="pill info">Not needed from backend</span></td><td>There’s no earnings-summary endpoint (only an admin stats route), but <code>GET /transactions/me</code> returns dated payouts. The app already works out this week and this month from those. The percentage change can be calculated the same way, so a backend endpoint is optional.</td></tr>
+      <tr><td>10</td><td>Technician reply to reviews</td><td><span class="pill ok">Correct</span></td><td>Review routes: create and list by technician only; the model has no reply field.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>9. Checklist once the backend is set up</h2>
+  <ol>
+    <li>Open the app on two phones with Expo Go: one as a customer, one as a technician.</li>
+    <li><b>Technician:</b> create an account, choose Laptops and Smartphones and an area, upload an ID and a certificate.</li>
+    <li><b>Admin:</b> approve the technician. Within a few seconds their app unlocks the job board.</li>
+    <li><b>Customer:</b> create an account, set an address, request a laptop repair with a photo.</li>
+    <li><b>Technician:</b> the request appears; send a quote.</li>
+    <li><b>Customer:</b> the quote appears with a notification. Select it, book, and pay with a Paystack test card. “Booking confirmed” appears after Paystack confirms.</li>
+    <li><b>Technician:</b> work through the stages to Completed.</li>
+    <li><b>Customer:</b> confirm and release, leave a review, open the warranty, file a claim.</li>
+    <li><b>Technician:</b> the earnings show the payment minus 10%. Answer the claim, then request a withdrawal.</li>
+    <li><b>Admin:</b> mark the withdrawal paid. The technician sees “Paid”.</li>
+  </ol>
+
+  <p>The backend team’s to-do list is in <code>BACKEND-NEEDS.md</code> in the app repo, with the evidence and suggested fixes.</p>
+  <footer>Prepared for Group 9 · RepairHub. App code: <a href="https://github.com/QueenCy-coder/repairhub-mobile">github.com/QueenCy-coder/repairhub-mobile</a> (see its README for setup and the local-API tool).</footer>
+</main>
+</body>
+</html>

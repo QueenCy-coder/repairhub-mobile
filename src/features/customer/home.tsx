@@ -102,7 +102,7 @@ export function ActiveRepairCard() {
   const steps = ['Request sent', 'Quotes in', 'Booking confirmed', s.mode === 'home' ? 'Technician on the way' : 'Device dropped off', 'Repair in progress', 'Repair completed', 'Payment released'];
   const [done, step] = ({ [JobStatus.Requested]: [1, 1], [JobStatus.Quoted]: [2, 2], [JobStatus.Booked]: [2, 2], [JobStatus.Accepted]: [3, 3], [JobStatus.OnTheWay]: [3, 3],
     [JobStatus.InProgress]: [4, 4], [JobStatus.Completed]: [5, 5], [JobStatus.Released]: [7, 6] } as Record<number, [number, number]>)[s.status] ?? [0, 0];
-  const stepNote = s.status === JobStatus.Quoted ? (s.jobId ? 'finish paying' : 'choose a quote') : s.status === JobStatus.Accepted ? 'up next' : s.status === JobStatus.Completed ? 'check & confirm' : '';
+  const stepNote = s.status === JobStatus.Quoted ? (s.jobId ? 'pay to confirm' : 'choose a quote') : s.status === JobStatus.Accepted ? 'up next' : s.status === JobStatus.Completed ? 'check & confirm' : '';
   const photo = s.photos.find(p => p.type === 'image');
   const action: [string, React.ComponentProps<typeof Ionicons>['name']] =
     s.status === JobStatus.Requested ? ['View', 'time-outline']

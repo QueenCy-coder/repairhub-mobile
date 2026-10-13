@@ -21,6 +21,12 @@ Press `w` in the Expo terminal for the web version.
 
 The app talks to the live API by default (`.env`). The hosted API sleeps when idle, so the first request after a while can take up to a minute.
 
+## Documents
+
+- [`BACKEND-NEEDS.md`](BACKEND-NEEDS.md): **what the app still needs from the backend**, with evidence and suggested fixes.
+- [`docs/RepairHub-API-Integration-Report.html`](docs/RepairHub-API-Integration-Report.html): what is connected, the full end-to-end test results, what is left.
+- [`docs/design/`](docs/design): the earlier clickable prototype and the wireframe review.
+
 ## Run against your own copy of the API (optional)
 
 `tools/run-local-api.mjs` starts the backend on your computer with a throw-away MongoDB (no install needed), a local admin and the app's categories. Payments run in the API's Paystack mock mode and uploads are saved locally.
@@ -32,6 +38,18 @@ echo "EXPO_PUBLIC_API_URL=local" > .env.local        # then restart Expo
 ```
 
 `local` means "the computer running Expo, port 5055", so phones on the same Wi-Fi use it too. The local admin's login is in `.local-api-db/admin.json`, for approving technicians while testing.
+
+Helpers for testing against that local API (they refuse to talk to anything else):
+
+```bash
+node tools/local-admin.mjs pending                      # technicians waiting for approval
+node tools/local-admin.mjs approve <id>                 # approve (or: reject <id> "reason")
+node tools/local-admin.mjs disputes                     # open problem reports; resolve <id> release|refund|partial
+node tools/local-admin.mjs withdrawals                  # then: paywd <id>
+node tools/local-paystack-webhook.mjs <reference> <naira>   # "payment succeeded" for the reference shown at checkout
+```
+
+`tools/seed-categories.sh` is for the **live** server: it creates the categories with an admin login you type in (the backend team has to create that admin first).
 
 ## What the app does with the API
 
@@ -53,15 +71,11 @@ The app checks the newest notification every 12 seconds and reloads in full only
 
 ## Notes for the backend team
 
-- **Admin account and categories:** someone with the Render `MONGO_URI` needs to run `seed:admin`. `scripts/seedCategories.js` (and `generatePostman.js`) are empty in the backend repo. The app expects these categories: Smartphones, Laptops, Tablets, Desktops, Printers (active); TVs, Refrigerators (inactive).
-- **Web preview CORS:** the live server only allows `CLIENT_URL`. Add the web preview origin to test in a browser (phones are not affected).
-- **Not in the API yet (the app works around these):**
-  - Preferred date/time/service type on a request: added to the end of `problemDescription`.
-  - Technician progress/completion photos: not uploaded.
-  - Review replies: not available.
-  - Self-service password reset.
-  - "Technician on the way" step: mapped to `diagnosing`.
-- **Possible backend fix:** after a dispute is resolved with a full refund, the job becomes `cancelled`, but the repair request stays `in_progress`.
+The full list, with evidence and suggested fixes, is in [`BACKEND-NEEDS.md`](BACKEND-NEEDS.md). In short:
+
+- **Blocking:** admin account, service categories (their seed script is an empty file), Cloudinary keys, Paystack keys and webhook, technician approval.
+- **Bugs:** quotes can't be edited or re-sent after withdrawing; a wrong current password returns 401 (same as an expired token); after a refund ruling the request stays `in_progress`; the rate limit is per IP; CORS blocks the web preview.
+- **Missing features the app works around:** progress notes without a status change, an "on the way" status, job photos, preferred date/time fields, password reset, distance values, a technician's claims list, push notifications, payout verification, review replies.
 
 ## Code layout
 
