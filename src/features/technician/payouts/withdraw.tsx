@@ -64,7 +64,7 @@ export function WithdrawDone() {
   const paid = w.status === 'Paid';
   const steps = ['Requested', 'Processing', 'Paid'];
   return (
-    <Screen title="Withdrawal" back={false} footer={<><Btn title="Back to earnings" onPress={() => router.replace('/earnings')} /></>}>
+    <Screen title="Withdrawal" back={false} footer={<><Btn title="Back to earnings" onPress={() => router.replace(s.api?.role === 'service_center' ? '/center-earnings' : '/earnings')} /></>}>
       <View style={{ alignItems: 'center', marginTop: 6 }}>
         <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: paid ? C.okBg : C.primarySoft, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 32 }}>{paid ? '✅' : w.speed === 'instant' ? '⏳' : '🗓'}</Text></View>
         <Title style={{ marginTop: 10, fontSize: 19 }}>{paid ? 'Money sent' : 'Withdrawal requested'}</Title>

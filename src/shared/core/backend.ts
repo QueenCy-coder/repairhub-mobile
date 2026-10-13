@@ -23,7 +23,12 @@ export const apiPhone = (p: string) => { const d = p.replace(/\D/g, '').replace(
 export const personKey = (u: { phone?: string | null; _id?: string; userId?: string }) => localPhone(u.phone) || String(u._id ?? u.userId ?? '');
 const months = (days?: number) => Math.max(0, Math.round((days ?? 0) / 30));
 
-/** The API has no fields for the preferred date, time and service type, so they travel at the end of the description. */
+/**
+ * Old requests had no preferred date / time / service-mode fields, so they were packed at the end of the
+ * description ("…\n\nPreferred: Mon 20 Oct · 2:00 pm · Home service"). New requests carry them as real
+ * fields (preferredDate / preferredTime / serviceMode). packDesc/unpackDesc remain to read older requests —
+ * see prefsOf below, which prefers the structured fields.
+ */
 const PREF = '\n\nPreferred: ';
 export const packDesc = (s: Pick<State, 'desc' | 'prefDate' | 'prefTime' | 'mode'>) => `${s.desc.trim()}${PREF}${s.prefDate} · ${s.prefTime} · ${s.mode === 'home' ? 'Home service' : 'Workshop visit'}`;
 export function unpackDesc(raw = '') {
@@ -32,6 +37,18 @@ export function unpackDesc(raw = '') {
   if (i < 0) return { desc: text, prefDate: '', prefTime: '', mode: 'shop' as const };
   const [prefDate = '', prefTime = '', how = ''] = text.slice(i + PREF.length).split(' · ');
   return { desc: text.slice(0, i), prefDate, prefTime, mode: /home/i.test(how) ? ('home' as const) : ('shop' as const) };
+}
+
+/**
+ * Preferred date / time / service mode from a request. Newer requests carry them as their own
+ * fields (preferredDate / preferredTime / serviceMode); older ones packed them into the
+ * description ("…PREF Mon 20 Oct · 2:00 pm · Home"). Both are handled here.
+ */
+function prefsOf(r: any) {
+  const desc = String(r?.problemDescription ?? '').replace(/\r\n/g, '\n');
+  if (r?.preferredDate || r?.preferredTime || r?.serviceMode)
+    return { desc, prefDate: r.preferredDate ?? '', prefTime: r.preferredTime ?? '', mode: (r.serviceMode === 'home' ? 'home' : 'shop') as 'home' | 'shop' };
+  return unpackDesc(desc);
 }
 
 /** "Thu 8 Oct" + "10:00 AM – 1:00 PM" → the next such date/time in the future (ISO), as the API requires. */
@@ -53,8 +70,9 @@ export function toISO(date: string, time: string) {
 /** The booked time window (kept in the appointment's notes); after a reschedule only the new start time exists. */
 const apptTime = (appt: any, at: Date) => (appt.status !== 'rescheduled' && appt.notes) || `${at.getHours() % 12 || 12}:${String(at.getMinutes()).padStart(2, '0')} ${at.getHours() < 12 ? 'AM' : 'PM'}`;
 
-/** Technician stage (app) ⇄ job status (API). Stages without their own API status are kept in the status note. */
-const STAGE_TO_API: Record<number, string> = { 1: 'diagnosing', 2: 'in_progress', 5: 'quality_check', 6: 'completed' };
+/** Technician stage (app) ⇄ job status (API). Stage 1 has its own server status for home visits. */
+const apiStatusFor = (stage: number | undefined, home: boolean) =>
+  stage === 1 ? (home ? 'on_the_way' : 'diagnosing') : stage === 2 ? 'in_progress' : stage === 5 ? 'quality_check' : stage === 6 ? 'completed' : undefined;
 function jobToApp(job: any): { status: JobStatus; techStage: number; parts: boolean; partsUsed: boolean } {
   const hist: any[] = job.statusHistory ?? [];
   const noted = [...hist].reverse().map(h => Number(/\[stage:(\d)\]/.exec(h.note ?? '')?.[1])).find(n => n > 0) ?? 0;
@@ -63,7 +81,7 @@ function jobToApp(job: any): { status: JobStatus; techStage: number; parts: bool
   const released = ['released', 'cash_settled'].includes(job.payment?.status);
   switch (st) {
     case 'accepted': return { status: JobStatus.Accepted, techStage: 0, parts: false, partsUsed };
-    case 'diagnosing': return { status: JobStatus.OnTheWay, techStage: 1, parts: false, partsUsed };
+    case 'diagnosing': case 'on_the_way': return { status: JobStatus.OnTheWay, techStage: 1, parts: false, partsUsed };
     case 'awaiting_parts': return { status: JobStatus.InProgress, techStage: Math.max(2, noted), parts: true, partsUsed: true };
     case 'on_hold': case 'in_progress': case 'quality_check': case 'ready':
       return { status: JobStatus.InProgress, techStage: Math.max(st === 'quality_check' || st === 'ready' ? 5 : 2, Math.min(noted, 5)), parts: false, partsUsed };
@@ -71,7 +89,7 @@ function jobToApp(job: any): { status: JobStatus; techStage: number; parts: bool
     default: return { status: JobStatus.Accepted, techStage: 0, parts: false, partsUsed };
   }
 }
-const LOG_LABEL: Record<string, string> = { accepted: 'Booked · paid into escrow', diagnosing: 'On the way / device received', awaiting_parts: 'Paused · waiting for parts', in_progress: 'Repair in progress', quality_check: 'Testing', ready: 'Ready', on_hold: 'On hold', completed: 'Repair completed · awaiting customer', disputed: 'Problem reported', cancelled: 'Cancelled' };
+const LOG_LABEL: Record<string, string> = { accepted: 'Booked · paid into escrow', on_the_way: 'On the way', diagnosing: 'On the way / device received', awaiting_parts: 'Paused · waiting for parts', in_progress: 'Repair in progress', quality_check: 'Testing', ready: 'Ready', on_hold: 'On hold', completed: 'Repair completed · awaiting customer', disputed: 'Problem reported', cancelled: 'Cancelled' };
 /** "17:45" today, otherwise "6 Oct, 17:45" (screens add "Today," themselves). */
 const fmtAt = (d: string) => {
   const t = new Date(d), hm = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
@@ -84,9 +102,11 @@ const jobLog = (job: any) => (job.statusHistory ?? []).map((h: any) => {
   return { label: (i > 0 ? raw.slice(0, i) : raw) || LOG_LABEL[h.status] || h.status, note: i > 0 ? raw.slice(i + NOTE_SEP.length) : undefined, at: fmtAt(h.changedAt), stage: Number(/\[stage:(\d)\]/.exec(h.note ?? '')?.[1]) || undefined };
 });
 
-const NOTE_TITLE: Record<string, string> = { repair_request: 'New repair request', quotation: 'Quotes', appointment: 'Booking', status_update: 'Repair update', payment: 'Payment', warranty: 'Warranty', review: 'New review', dispute: 'Problem reported', verification: 'Verification' };
+const NOTE_TITLE: Record<string, string> = { repair_request: 'New repair request', quotation: 'Quotes', appointment: 'Booking', status_update: 'Repair update', payment: 'Payment', warranty: 'Warranty', review: 'New review', dispute: 'Problem reported', verification: 'Verification', team: 'Team' };
 const noteRoute = (role: Role, type: string) => role === 'technician'
   ? ({ repair_request: '/jobs', quotation: '/jobs', appointment: '/job', status_update: '/job', payment: '/earnings', warranty: '/tech-claim', review: '/reviews', dispute: '/job', verification: '/verification' } as Record<string, string>)[type]
+  : role === 'service_center'
+  ? ({ repair_request: '/center-jobs', quotation: '/center-jobs', appointment: '/job', status_update: '/job', payment: '/center-earnings', warranty: '/center-profile', review: '/center-profile', dispute: '/job', verification: '/center-profile', team: '/center-team' } as Record<string, string>)[type]
   : ({ quotation: '/compare', appointment: '/appointments', status_update: '/track', payment: '/track', warranty: '/warranty', review: '/repairs', dispute: '/track' } as Record<string, string>)[type];
 
 /* ───────── session ───────── */
@@ -97,19 +117,30 @@ const sessionFrom = (user: any, token: string): ApiSession => ({ token, userId: 
 function signedIn(sess: ApiSession): Partial<State> {
   const base = initialState(), key = sess.phone || sess.userId;
   const common = { ...base, api: sess, email: sess.email, accounts: [], notifications: [], toast: null };
-  return sess.role === 'technician'
-    ? { ...common, signupRole: 'technician', techName: sess.name, techPhone: key, techIsNew: true }
-    : { ...common, signupRole: 'customer', fullName: sess.name, phone: key, custIsNew: true };
+  if (sess.role === 'technician') return { ...common, signupRole: 'technician', techName: sess.name, techPhone: key, techIsNew: true };
+  if (sess.role === 'service_center') return { ...common, signupRole: 'service_center', phone: key, centerName: sess.name, techName: sess.name, techIsNew: true };
+  return { ...common, signupRole: 'customer', fullName: sess.name, phone: key, custIsNew: true };
 }
 
-export async function register(p: { role: Role; fullName: string; email: string; phone: string; password: string }, set: Set) {
-  const d = await api<{ user: any; token: string }>('POST', '/users/register', { body: { fullName: p.fullName, email: p.email.trim().toLowerCase(), password: p.password, role: p.role, ...(p.phone ? { phone: apiPhone(p.phone) } : {}) } }).catch(e => {
+/**
+ * Create the account. It starts unverified and no session is started: the person confirms an email
+ * address or phone number with `sendVerificationCode` + `confirmVerification`, then logs in.
+ */
+export async function register(p: { role: Role; fullName: string; email: string; phone: string; password: string; businessName?: string }) {
+  const d = await api<{ user: any }>('POST', '/users/register', { body: { fullName: p.fullName, email: p.email.trim().toLowerCase(), password: p.password, role: p.role, ...(p.phone ? { phone: apiPhone(p.phone) } : {}), ...(p.businessName ? { businessName: p.businessName } : {}) } }).catch(e => {
     throw e instanceof ApiError && e.status === 409 ? new ApiError('An account already uses this email. Log in instead.', 409) : e;
   });
-  const sess = sessionFrom(d.user, d.token);
-  setToken(sess.token);
-  set({ ...signedIn(sess), custOnboarded: false });
-  return sess;
+  return d.user;
+}
+
+/** Send a 6-digit code to the account's email address or phone number (the person chooses which). */
+export async function sendVerificationCode(email: string, channel: 'email' | 'phone') {
+  return api<{ sent: boolean; verified?: boolean; channel: 'email' | 'phone'; destination?: string; code?: string; expiresInMinutes?: number }>('POST', '/users/verify/send', { body: { email: email.trim().toLowerCase(), channel } });
+}
+
+/** Redeem the code and activate the account; the person then logs in. */
+export async function confirmVerification(email: string, code: string) {
+  return api<{ verified: boolean }>('POST', '/users/verify/confirm', { body: { email: email.trim().toLowerCase(), code } });
 }
 
 export async function login(p: { role: Role; email: string; password: string }, set: Set) {
@@ -128,12 +159,22 @@ export async function login(p: { role: Role; email: string; password: string }, 
 
 export function logout(set: Set) {
   setToken(null);
-  profileFor = ''; afterFor = ''; appointments.clear(); requests.clear(); warrantyInfo.clear(); techProf = null; techReviews = []; baseFilled = false; extrasDue = true; topNote = '';
+  profileFor = ''; afterFor = ''; appointments.clear(); requests.clear(); warrantyInfo.clear(); techProf = null; centerProf = null; techReviews = []; baseFilled = false; extrasDue = true; topNote = '';
   set({ ...initialState(), api: null });
 }
 
 export async function changePassword(currentPassword: string, newPassword: string) {
   await api('POST', '/users/change-password', { body: { currentPassword, newPassword } });
+}
+
+/** Request a password-reset token (1h expiry). The API returns it here — the app is the delivery channel. */
+export async function forgotPassword(email: string) {
+  return api<{ sent: boolean; resetToken?: string; expiresInMinutes?: number }>('POST', '/users/forgot-password', { body: { email: email.trim().toLowerCase() } });
+}
+
+/** Set a new password with the token from `forgotPassword`. */
+export async function resetPassword(token: string, newPassword: string) {
+  await api('POST', '/users/reset-password', { body: { token, newPassword } });
 }
 
 export async function updateMe(p: { fullName?: string; phone?: string }, set: Set, get: Get) {
@@ -185,7 +226,7 @@ export function refresh(get: Get, set: Set): Promise<void> {
   if (inFlight) return inFlight;
   const s = get();
   if (!s.api) return Promise.resolve();
-  inFlight = (s.api.role === 'technician' ? refreshTech(get, set) : refreshCustomer(get, set)).then(() => { doneAt = Date.now(); }).finally(() => { inFlight = null; });
+  inFlight = (s.api.role === 'technician' ? refreshTech(get, set) : s.api.role === 'service_center' ? refreshCenter(get, set) : refreshCustomer(get, set)).then(() => { doneAt = Date.now(); }).finally(() => { inFlight = null; });
   return inFlight;
 }
 let doneAt = 0;
@@ -257,7 +298,7 @@ async function refreshCustomer(get: Get, set: Set) {
     if (!techProfiles.has(String(tid))) techProfiles.set(String(tid), await api<any>('GET', `/technician-profiles/${tid}`).catch(() => null));
   }));
   const doneJobs: DoneJob[] = past.map(r => {
-    const j = jobOf(r._id), u = unpackDesc(r.problemDescription);
+    const j = jobOf(r._id), u = prefsOf(r);
     return { tech: j ? String(j.technicianUserId) : '', techName: j ? techProfiles.get(String(j.technicianId))?.userId?.fullName ?? '' : '', custPhone: me, id: shortRef(r._id), dev: r.brandModel || r.itemType, cust: s.fullName, cat: catName(s, r.serviceCategoryId),
       service: u.desc.split(/[,.]/)[0], gross: j && ['released', 'cash_settled', 'refunded'].includes(j.payment?.status) ? j.price : 0, warr: months(j?.warrantyDays), warrDays: j?.warrantyDays, warrId: warrantyInfo.get(j?._id)?.id, warrUntil: warrantyInfo.get(j?._id)?.until, at: ts(j?.completedAt ?? r.updatedAt), rating: 0,
       status: r.status === 'cancelled' || j?.status === 'cancelled' ? 'Cancelled' : 'Completed', before: r.mediaUrls?.[0], apiJobId: j?._id } as DoneJob;
@@ -269,7 +310,7 @@ async function refreshCustomer(get: Get, set: Set) {
     if (s.rid) set({ rid: null, jobId: null, status: JobStatus.None });
     return notifications(get, set);
   }
-  const u = unpackDesc(live.problemDescription);
+  const u = prefsOf(live);
   const base: Partial<State> = {
     rid: live._id, cat: catName(s, live.serviceCategoryId), model: live.brandModel || live.itemType, desc: u.desc, location: live.address ?? '',
     prefDate: u.prefDate, prefTime: u.prefTime, mode: u.mode, requestAt: ts(live.createdAt), owner: { name: s.fullName, phone: me, photo: s.custPhoto },
@@ -325,7 +366,7 @@ async function refreshCustomer(get: Get, set: Set) {
     warrantyId: warranty?._id ?? null, warrantyUntil: ts(warranty?.expiresAt),
     claim: c ? { status: c.status === 'open' ? 'Submitted' : 'Resolved', issue: c.description, date: nowLabel(new Date(c.createdAt)), at: ts(c.createdAt), outcome: c.status === 'resolved' ? (c.resolutionNote || 'The technician fixed the problem under warranty.') : c.status === 'rejected' ? (c.resolutionNote || 'This fault isn’t covered by the warranty.') : undefined, resolvedAt: c.resolvedAt ? nowLabel(new Date(c.resolvedAt)) : undefined, resolution: c.status, apiId: c._id } as State['claim'] : null,
     dispute: d ? { id: shortRef(d._id, 'D'), status: d.status === 'open' ? 'Under review' : 'Resolved', outcome: d.resolution?.note || ({ release: 'RepairHub reviewed both sides and released the payment to the technician.', refund: 'RepairHub refunded your payment.', partial: `RepairHub refunded part of your payment${d.resolution?.refundAmount ? ` (₦${d.resolution.refundAmount})` : ''}.` } as Record<string, string>)[d.resolution?.decision] } : null,
-    ...(r ? { reviewed: true, rating: r.rating, tags: r.tags ?? [], reviewText: r.comment ?? '' } : {}),
+    ...(r ? { reviewed: true, rating: r.rating, tags: r.tags ?? [], reviewText: r.comment ?? '', reply: r.reply ?? '', replied: !!r.repliedAt } : {}),
   });
   return notifications(get, set);
 }
@@ -375,7 +416,7 @@ async function refreshTech(get: Get, set: Set) {
   const s = get();
   const base = fromGeo(prof.baseLocation);
   const board: Job[] = open.map(r => {
-    const u = unpackDesc(r.problemDescription), at = fromGeo(r.location);
+    const u = prefsOf(r), at = fromGeo(r.location);
     return { id: r._id, cust: 'Customer', dev: r.brandModel || r.itemType, issue: u.desc, cat: catName(s, r.serviceCategoryId), area: areaOf(r.address ?? ''),
       km: base && at ? Math.round(distanceKm(base, at) * 10) / 10 : NaN, ago: agoLabel(ts(r.createdAt)),
       photos: r.mediaUrls?.length ?? 0, when: u.prefDate ? `${u.prefDate}${u.prefTime ? `, ${u.prefTime}` : ''}` : 'Flexible', mode: u.mode === 'home' ? 'Home service' : 'Visit shop', media: r.mediaUrls ?? [], address: r.address ?? '' } as Job;
@@ -397,8 +438,8 @@ async function refreshTech(get: Get, set: Set) {
   const doneJobs: DoneJob[] = finished.map(j => {
     const r = techReviews.find(x => String(x.repairJobId) === String(j._id)), rq = requests.get(String(j.repairRequestId?._id ?? j.repairRequestId));
     return { tech: s.techPhone ?? '', techName: s.techName, custPhone: String(j.customerUserId), id: shortRef(j.repairRequestId?._id ?? j.repairRequestId), dev: rq?.brandModel || j.repairRequestId?.itemType || 'Device',
-      cust: 'Customer', cat: rq ? catName(s, rq.serviceCategoryId) : j.repairRequestId?.itemType ?? 'Smartphones', before: rq?.mediaUrls?.[0], service: unpackDesc(j.repairRequestId?.problemDescription).desc.split(/[,.]/)[0], gross: j.price, warr: months(j.warrantyDays), at: ts(j.completedAt),
-      rating: r?.rating ?? 0, reviewText: r?.comment, tags: r?.tags, status: 'Completed', apiJobId: j._id } as DoneJob;
+      cust: 'Customer', cat: rq ? catName(s, rq.serviceCategoryId) : j.repairRequestId?.itemType ?? 'Smartphones', before: rq?.mediaUrls?.[0], service: prefsOf(j.repairRequestId).desc.split(/[,.]/)[0], gross: j.price, warr: months(j.warrantyDays), at: ts(j.completedAt),
+      rating: r?.rating ?? 0, reviewText: r?.comment, tags: r?.tags, status: 'Completed', apiJobId: j._id, reviewId: r?._id, reply: r?.reply ?? '' } as DoneJob;
   });
   // The API keeps bank details only inside each withdrawal: on a new phone, reuse the latest one as the payout account.
   const lastWd = txns?.find(t => t.type === 'withdrawal' && t.payoutDetails?.accountNumber);
@@ -416,7 +457,7 @@ async function refreshTech(get: Get, set: Set) {
   const full = await api<any>('GET', `/repair-jobs/${liveJob._id}`);
   const appt = await appointment(full.appointmentId);
   const req = full.repairRequestId ?? {};
-  const u = unpackDesc(req.problemDescription);
+  const u = prefsOf(req);
   const q = mine.find(x => x._id === String(full.quotationId));
   const at = appt ? new Date(appt.scheduledAt) : null;
   const mapped = jobToApp(full);
@@ -428,6 +469,99 @@ async function refreshTech(get: Get, set: Set) {
     owner: full.contact ? { name: full.contact.name, phone: localPhone(full.contact.phone), photo: null } : null,
     photos: (req.mediaUrls ?? []).map((uri: string) => ({ uri, type: 'image' } as Media)),
     sel: 'emeka', quoted: true, qBy: { name: s.techName, phone: s.techPhone ?? '', rating: s.techRating?.avg ?? 0, jobs: s.techRating?.jobs ?? 0 },
+    qLabour: q?.laborCost ?? full.price, qParts: q?.partsCost ?? 0, qDays: q?.estimatedDays ?? 1, qWarr: months(full.warrantyDays), qNote: q?.notes ?? '',
+    ...mapped, ...keepLocalStages(p, full._id, mapped, jobLog(full)), completedAt: ts(full.completedAt), requestAt: ts(req.createdAt ?? full.createdAt), payState: full.payment?.status,
+    dispute: full.status === 'disputed' ? { id: 'D', status: 'Under review' } : null,
+  }));
+  return notifications(get, set);
+}
+
+let centerProf: any = null;
+/** A service center's own world: profile + verification, team, open requests, quotes, jobs, wallet. */
+async function refreshCenter(get: Get, set: Set) {
+  await categories(set, get);
+  const extras = extrasDue || !centerProf || centerProf.verificationStatus !== 'verified';
+  extrasDue = false;
+  // The center's own profile (verification, rating): reloaded while under review, or with the extras.
+  const prof = extras ? (centerProf = await api<any>('GET', '/service-centers/me')) : centerProf;
+  const s0 = get();
+  const skills = (prof.serviceCategoryIds ?? []).map((c: any) => catName(s0, c));
+  const centerVerif = prof.verificationStatus === 'verified' ? 'verified' : prof.verificationStatus === 'rejected' ? 'rejected' : prof.verificationDocs?.length ? 'pending' : 'new';
+  set({
+    centerId: prof._id, centerVerif, rejectNote: prof.verificationFeedback ?? '',
+    centerName: prof.businessName ?? s0.centerName, centerDesc: prof.description ?? '', centerAddress: prof.address ?? s0.centerAddress,
+    ...(skills.length ? { skills } : {}),
+    ...((prof.areas?.length ?? 0) ? { areas: prof.areas } : {}),
+    // techRating mirrors the center's rating so the shared helpers (useWallet, mini stats) work unchanged.
+    centerRating: { avg: prof.ratingAvg ?? 0, count: prof.ratingCount ?? 0, jobs: prof.jobsCompleted ?? 0 },
+    techRating: { avg: prof.ratingAvg ?? 0, count: prof.ratingCount ?? 0, jobs: prof.jobsCompleted ?? 0 },
+    techSubmittedAt: ts(prof.updatedAt), centerSubmittedAt: ts(prof.updatedAt),
+  });
+  if (centerVerif !== 'verified') return notifications(get, set);
+  // Team members: technicians whose profile lists this center as their employer.
+  const team = await api<any[]>('GET', `/service-centers/${prof._id}/team`);
+  set({ centerTeam: team.map(m => ({ id: m._id, name: m.userId?.fullName ?? 'Technician', email: m.userId?.email ?? '', phone: localPhone(m.userId?.phone) })) });
+
+  const [open, mine, jobs, wallet, txns] = await Promise.all([
+    api<any[]>('GET', '/repair-requests', { query: { limit: 50 } }),
+    api<any[]>('GET', '/quotations/mine'),
+    api<any[]>('GET', '/repair-jobs', { query: { limit: 50 } }),
+    extras ? api<any>('GET', '/wallets/me') : null,
+    extras ? api<any[]>('GET', '/transactions/me', { query: { limit: 50 } }) : null,
+  ]);
+  const s = get();
+  const base = fromGeo(prof.location);
+  const board: Job[] = open.map(r => {
+    const u = prefsOf(r), at = fromGeo(r.location);
+    return { id: r._id, cust: 'Customer', dev: r.brandModel || r.itemType, issue: u.desc, cat: catName(s, r.serviceCategoryId), area: areaOf(r.address ?? ''),
+      km: base && at ? Math.round(distanceKm(base, at) * 10) / 10 : NaN, ago: agoLabel(ts(r.createdAt)),
+      photos: r.mediaUrls?.length ?? 0, when: u.prefDate ? `${u.prefDate}${u.prefTime ? `, ${u.prefTime}` : ''}` : 'Flexible', mode: u.mode === 'home' ? 'Home service' : 'Visit shop', media: r.mediaUrls ?? [], address: r.address ?? '' } as Job;
+  });
+  // Nearest first; requests without a location keep their order at the end.
+  board.sort((a, b) => (Number.isFinite(a.km) ? a.km : Infinity) - (Number.isFinite(b.km) ? b.km : Infinity));
+  // Quotes this center has sent, keyed by request id (with the team member the work was assigned to).
+  const quoteStatus: Record<string, string> = Object.fromEntries(mine.map(q => [String(q.repairRequestId?._id ?? q.repairRequestId), q.status]));
+  const otherQuotes: Record<string, TechQuote> = Object.fromEntries(mine.filter(q => ['pending', 'accepted'].includes(q.status)).map(q => [String(q.repairRequestId?._id ?? q.repairRequestId),
+    { labour: q.laborCost ?? 0, parts: q.partsCost ?? 0, days: q.estimatedDays ?? 0, warr: months(q.warrantyDays), note: q.notes ?? '', qid: q._id, status: q.status, technicianId: q.technicianId ? String(q.technicianId) : undefined } as TechQuote]));
+  const settled = (j: any) => ['released', 'refunded', 'cash_settled'].includes(j.payment?.status) || j.status === 'cancelled';
+  const paid = (j: any) => ['held', 'cash', 'released', 'cash_settled'].includes(j.payment?.status);
+  const liveJob = jobs.find(j => !settled(j) && paid(j));
+  const finished = jobs.filter(j => j.status === 'completed' && settled(j));
+  // Finished jobs: the job list only carries the item type, so each request's model is loaded once and cached.
+  await Promise.all(finished.map(async j => {
+    const rid = String(j.repairRequestId?._id ?? j.repairRequestId);
+    if (!requests.has(rid)) requests.set(rid, await api<any>('GET', `/repair-requests/${rid}`).catch(() => null));
+  }));
+  const doneJobs: DoneJob[] = finished.map(j => {
+    const rq = requests.get(String(j.repairRequestId?._id ?? j.repairRequestId));
+    return { tech: '', techName: s.centerName, custPhone: String(j.customerUserId), id: shortRef(j.repairRequestId?._id ?? j.repairRequestId), dev: rq?.brandModel || j.repairRequestId?.itemType || 'Device',
+      cust: 'Customer', cat: rq ? catName(s, rq.serviceCategoryId) : 'Smartphones', before: rq?.mediaUrls?.[0], service: prefsOf(j.repairRequestId).desc.split(/[,.]/)[0], gross: j.price, warr: months(j.warrantyDays), at: ts(j.completedAt),
+      rating: 0, status: 'Completed', apiJobId: j._id } as DoneJob;
+  });
+  set({
+    board, otherQuotes, quoteStatus, doneJobs,
+    ...(wallet ? { wallet: { balance: wallet.balance ?? 0, withdrawable: wallet.withdrawable ?? wallet.balance ?? 0 } } : {}),
+    ...(txns ? { apiTxns: txns.map(t => ({ id: t._id, type: t.type, amount: t.amount, status: t.status, at: ts(t.createdAt), ref: t.reference, bank: t.payoutDetails?.bankName, acct: t.payoutDetails?.accountNumber, name: t.payoutDetails?.accountName, jobId: t.repairJobId ? String(t.repairJobId) : undefined })) } : {}),
+  });
+
+  if (!liveJob) {
+    if (s.jobId) set({ jobId: null, rid: null, status: JobStatus.None, sel: null, quoted: false, qBy: null });
+    return notifications(get, set);
+  }
+  const full = await api<any>('GET', `/repair-jobs/${liveJob._id}`);
+  const appt = await appointment(full.appointmentId);
+  const req = full.repairRequestId ?? {};
+  const u = prefsOf(req);
+  const q = mine.find(x => x._id === String(full.quotationId));
+  const at = appt ? new Date(appt.scheduledAt) : null;
+  const mapped = jobToApp(full);
+  set(p => ({
+    rid: req._id ?? null, jobId: full._id, apptId: full.appointmentId ?? null, cat: catName(get(), q?.repairRequestId?.serviceCategoryId ?? req.serviceCategoryId) || req.itemType,
+    model: req.brandModel || req.itemType, desc: u.desc, location: req.address ?? appt?.address ?? '', prefDate: u.prefDate, prefTime: u.prefTime, mode: appt?.serviceMode === 'onsite' || u.mode === 'home' ? 'home' : 'shop',
+    ...(at ? { date: `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][at.getDay()]} ${at.getDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][at.getMonth()]}`, time: apptTime(appt, at) } : {}),
+    owner: full.contact ? { name: full.contact.name, phone: localPhone(full.contact.phone), photo: null } : null,
+    photos: (req.mediaUrls ?? []).map((uri: string) => ({ uri, type: 'image' } as Media)),
+    sel: 'emeka', quoted: true, qBy: { name: s.centerName, phone: s.phone ?? '', rating: s.centerRating?.avg ?? 0, jobs: s.centerRating?.jobs ?? 0 },
     qLabour: q?.laborCost ?? full.price, qParts: q?.partsCost ?? 0, qDays: q?.estimatedDays ?? 1, qWarr: months(full.warrantyDays), qNote: q?.notes ?? '',
     ...mapped, ...keepLocalStages(p, full._id, mapped, jobLog(full)), completedAt: ts(full.completedAt), requestAt: ts(req.createdAt ?? full.createdAt), payState: full.payment?.status,
     dispute: full.status === 'disputed' ? { id: 'D', status: 'Under review' } : null,
@@ -454,9 +588,13 @@ export async function submitRequest(get: Get, set: Set) {
   form.append('serviceCategoryId', cats[s.cat]);
   form.append('itemType', s.cat);
   form.append('brandModel', s.model.trim());
-  form.append('problemDescription', packDesc(s));
+  form.append('problemDescription', s.desc.trim());
   form.append('urgency', 'normal');
   form.append('address', s.location.trim());
+  // The preferred date / time / service mode are real request fields on the API (no longer packed into the description).
+  if (s.prefDate) form.append('preferredDate', s.prefDate);
+  if (s.prefTime) form.append('preferredTime', s.prefTime);
+  form.append('serviceMode', s.mode);
   // Where the repair is: the phone's position (asked here, when it's clearly useful), else the address's area.
   const at = await bestPoint(s.location);
   if (at) form.append('location', JSON.stringify(at));
@@ -531,6 +669,12 @@ export async function review(get: Get, set: Set) {
   await api('POST', '/reviews', { body: { repairJobId: s.jobId, rating: s.rating, ...(s.tags.length ? { tags: s.tags } : {}), ...(s.reviewText.trim() ? { comment: s.reviewText.trim() } : {}) } });
   set({ reviewed: true });
 }
+/** The technician's reply to a customer's review (shown on the customer's review screen). */
+export async function replyToReview(get: Get, set: Set, reviewId: string, reply: string) {
+  extrasDue = true;
+  await api('POST', `/reviews/${reviewId}/reply`, { body: { reply: reply.trim() } });
+  await refresh(get, set);
+}
 export async function fileClaim(get: Get, set: Set, description: string) {
   extrasDue = true;
   const s = get();
@@ -590,7 +734,10 @@ export async function submitVerification(get: Get, set: Set, docs: Media[]) {
 /** One quote per technician per request: the API can't edit a quote, and a withdrawn one still blocks a new one. */
 export async function sendQuote(get: Get, set: Set, requestId: string, q: TechQuote) {
   if (get().quoteStatus?.[requestId]) throw new ApiError('You’ve already sent a quote on this request.', 409);
-  const r = await api<any>('POST', '/quotations', { body: { repairRequestId: requestId, laborCost: q.labour, partsCost: q.parts, estimatedDays: q.days, warrantyDays: q.warr * 30, ...(q.note.trim() ? { notes: q.note.trim() } : {}) } })
+  const body: Record<string, unknown> = { repairRequestId: requestId, laborCost: q.labour, partsCost: q.parts, estimatedDays: q.days, warrantyDays: q.warr * 30, ...(q.note.trim() ? { notes: q.note.trim() } : {}) };
+  // A service center quotes as its team: the customer must know which technician will do the work.
+  if (get().api?.role === 'service_center') body.technicianId = q.technicianId;
+  const r = await api<any>('POST', '/quotations', { body })
     .catch(e => { throw e instanceof ApiError && /duplicate/i.test(e.message) ? new ApiError('You’ve already sent a quote on this request.', 409) : e; });
   set(p => ({ otherQuotes: { ...p.otherQuotes, [requestId]: { ...q, qid: r._id, status: 'pending' } }, quoteStatus: { ...p.quoteStatus, [requestId]: 'pending' } }));
 }
@@ -605,12 +752,24 @@ export async function updateJob(get: Get, set: Set, u: { stage?: number; parts?:
   const s = get(), id = s.jobId;
   if (!id) throw new ApiError('No active job.', 400);
   const note = `${u.stage ? `[stage:${u.stage}] ` : ''}${u.label}${u.note ? `${NOTE_SEP}${u.note}` : ''}`.slice(0, 500);
-  let status = u.parts ? 'awaiting_parts' : u.stage ? STAGE_TO_API[u.stage] : undefined;
+  // Home visits get their own "on the way" status on the server; shop drop-offs share "diagnosing".
+  let status = u.parts ? 'awaiting_parts' : u.stage ? apiStatusFor(u.stage, s.mode === 'home') : undefined;
   // Coming back from "waiting for parts", or a stage that shares the current API status: record it as in progress.
   const cur = (await api<any>('GET', `/repair-jobs/${id}`)).status;
   if (!status || status === cur) status = cur === 'awaiting_parts' || cur === 'diagnosing' || cur === 'on_hold' ? 'in_progress' : undefined;
-  if (status && status !== cur) await api('PATCH', `/repair-jobs/${id}/status`, { body: { status, note } });
-  else if (u.stage) {
+  if (status && status !== cur) {
+    const photos = s.progressPhotos ?? [];
+    if (photos.length) {
+      // Progress photos ride along with the status update (multipart); the server stores them on the job.
+      const form = new FormData();
+      form.append('status', status);
+      form.append('note', note);
+      await appendMedia(form, 'media', photos.slice(0, 6));
+      await api('PATCH', `/repair-jobs/${id}/status`, { form, timeoutMs: 120000 });
+    } else {
+      await api('PATCH', `/repair-jobs/${id}/status`, { body: { status, note } });
+    }
+  } else if (u.stage) {
     // Same API status (e.g. "Diagnosis completed" during in_progress): keep it on this device's log only.
     set(p => ({ techStage: Math.max(p.techStage, u.stage!), jobLog: [...p.jobLog, { label: u.label, at: nowLabel(), stage: u.stage, note: u.note }] }));
     return;
@@ -628,6 +787,46 @@ export async function techClaims(get: Get) {
   const jobs = (get().doneJobs ?? []).filter(j => j.apiJobId);
   const ws = await Promise.all(jobs.map(j => api<any>('GET', `/warranty-records/job/${j.apiJobId}`).then(w => ({ w, j })).catch(() => null)));
   return ws.filter(Boolean).flatMap(x => (x!.w.claims ?? []).map((c: any) => ({ warrantyId: x!.w._id, claim: c, job: x!.j })));
+}
+
+/* ───────── service center actions ───────── */
+
+/** Business details (name / description / address / area) and the team's service categories. */
+export async function saveCenterProfile(get: Get, set: Set, p: { name?: string; desc?: string; address?: string; skills?: string[]; areas?: string[] }) {
+  const cats = await categories(set, get);
+  const id = get().centerId ?? (await api<any>('GET', '/service-centers/me'))._id;
+  const at = p.address ? addressPoint(p.address) : null;
+  await api('PATCH', `/service-centers/${id}`, { body: {
+    ...(p.name ? { businessName: p.name } : {}),
+    ...(p.desc !== undefined ? { description: p.desc } : {}),
+    ...(p.address ? { address: p.address, ...(at ? { location: at } : {}) } : {}),
+    ...(p.skills ? { serviceCategoryIds: p.skills.map(k => cats[k]).filter(Boolean) } : {}),
+    ...(p.areas ? { areas: p.areas } : {}),
+  } });
+  set({ centerId: id, ...(p.name ? { centerName: p.name } : {}), ...(p.desc !== undefined ? { centerDesc: p.desc } : {}), ...(p.address ? { centerAddress: p.address } : {}), ...(p.skills ? { skills: p.skills } : {}), ...(p.areas ? { areas: p.areas } : {}) });
+  extrasDue = true;
+}
+
+/** Business documents (CAC registration, business ID), for RepairHub's team to verify. */
+export async function submitCenterVerification(get: Get, set: Set, docs: Media[]) {
+  const id = get().centerId ?? (await api<any>('GET', '/service-centers/me'))._id;
+  const form = new FormData();
+  await appendMedia(form, 'docs', docs.slice(0, 5));
+  await api('POST', `/service-centers/${id}/verification-docs`, { form, timeoutMs: 120000 });
+  set({ centerVerif: 'pending', centerSubmittedAt: Date.now() });
+  extrasDue = true;
+}
+
+/** Add a technician to the team by the email on their account. */
+export async function addTeamMember(get: Get, set: Set, email: string) {
+  const m = await api<any>('POST', `/service-centers/${get().centerId!}/team`, { body: { email: email.trim().toLowerCase() } });
+  await refresh(get, set);
+  return m;
+}
+/** Remove a technician from the team (their rentals / jobs are unaffected). */
+export async function removeTeamMember(get: Get, set: Set, profileId: string) {
+  await api('DELETE', `/service-centers/${get().centerId!}/team/${profileId}`);
+  await refresh(get, set);
 }
 
 export async function withdraw(get: Get, set: Set, amount: number, account: PayoutAccount) {

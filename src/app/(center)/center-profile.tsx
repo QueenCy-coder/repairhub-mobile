@@ -1,0 +1,1 @@
+export { CenterProfile as default } from '../../features/center/profile';

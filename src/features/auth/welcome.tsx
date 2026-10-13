@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Logo } from '../../shared/components/logo';
 import { Btn, Muted, Screen, Title, C, FadeIn } from '../../shared/components/ui';
-import { IMG } from '../../shared/core/data';
+import { IMG, type Role } from '../../shared/core/data';
 import { useStore } from '../../shared/core/store';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -48,7 +48,7 @@ export function RolePicker() {
   // Same choice for both paths: pick who you are, then create that account or log in to it.
   const params = useLocalSearchParams<{ mode?: string }>();
   const [mode, setMode] = useState<'signup' | 'login'>(params.mode === 'login' ? 'login' : 'signup');
-  const pick = (r: 'customer' | 'technician') => { set({ signupRole: r, authMode: mode }); router.push(mode === 'login' ? '/login' : '/signup'); };
+  const pick = (r: Role) => { set({ signupRole: r, authMode: mode }); router.push(mode === 'login' ? '/login' : '/signup'); };
   // Figma "Welcome to RepairHub": illustrated cards, icon chip beside the title, round arrow button.
   return (
     <Screen title="">
@@ -60,6 +60,7 @@ export function RolePicker() {
       </View>
       <FadeIn delay={80}><RoleCard title="I need a repair" sub="Find trusted technicians for your devices and home repairs" art={IMG.roleCustomerArt} icon="person-outline" iconColor={C.primary} bg="#F0F6FE" onPress={() => pick('customer')} /></FadeIn>
       <FadeIn delay={180}><RoleCard title="I’m a technician" sub="Find repair jobs, send quotes and manage your services." art={IMG.roleTechArt} icon="build-outline" iconColor="#F79009" bg="#FEFBED" onPress={() => pick('technician')} /></FadeIn>
+      <FadeIn delay={280}><RoleCard title="I run a service center" sub="Send quotes as a team, manage technicians and track every job." art={IMG.roleTechArt} icon="storefront-outline" iconColor="#0E8365" bg="#EBF7F2" onPress={() => pick('service_center')} /></FadeIn>
       <View style={{ marginTop: 28, marginBottom: 12 }}>
       <Text style={{ textAlign: 'center', fontSize: 15, color: '#3D4350', paddingVertical: 4 }}>
         {mode === 'login' ? 'Don’t have an account? ' : 'Already have an account? '}

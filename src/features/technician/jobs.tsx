@@ -17,7 +17,7 @@ export const refOf = (id: string, rid?: string | null) => (id === 'RH-0841' ? sh
 const NEARBY_KM = 10;
 
 /** Label when a quote was sent on this request but is no longer live (the API allows one quote per request). */
-const closedQuote = (s: { quoteStatus?: Record<string, string> }, id: string) => ({ withdrawn: 'Quote withdrawn', expired: 'Quote expired', rejected: 'Not chosen' } as Record<string, string>)[s.quoteStatus?.[id] ?? ''];
+export const closedQuote = (s: { quoteStatus?: Record<string, string> }, id: string) => ({ withdrawn: 'Quote withdrawn', expired: 'Quote expired', rejected: 'Not chosen' } as Record<string, string>)[s.quoteStatus?.[id] ?? ''];
 
 export function Jobs() {
   const { s, set } = useStore();
@@ -171,12 +171,15 @@ export function SendQuote() {
   const { s, set, get, toast, online, run, busy } = useStore();
   const j = jobById(s, s.viewJob);
   const existing = myQuote(s, j.id);
+  const isCenter = s.api?.role === 'service_center';
+  const team = s.centerTeam ?? [];
   // Each request gets its own draft, pre-filled only from that request's existing quote.
   const [labour, setLabour] = React.useState(existing ? String(existing.labour) : '');
   const [parts, setParts] = React.useState(existing ? String(existing.parts) : '');
   const [days, setDays] = React.useState<number | null>(existing?.days ?? null);
   const [warr, setWarr] = React.useState<number | null>(existing?.warr ?? null);
   const [note, setNote] = React.useState(existing?.note ?? '');
+  const [techId, setTechId] = React.useState(existing?.technicianId ?? (team[0]?.id ?? ''));
   const [tried, setTried] = React.useState(false);
   const num = (t: string) => Number(t.replace(/\D/g, '')) || 0;
   const total = num(labour) + num(parts);
@@ -188,8 +191,9 @@ export function SendQuote() {
   };
   const send = async () => {
     if (!online) return Alert.alert('You’re offline', 'Quotes need a connection so customers see live prices. Job status updates still work offline.');
+    if (isCenter && !techId) { setTried(true); toast('Pick which technician will do the work — add them to your team first'); return; }
     if (Object.values(err).some(Boolean)) { setTried(true); toast('Please complete the fields marked in red'); return; }
-    const q = { labour: num(labour), parts: num(parts), days: days!, warr: warr!, note: note.trim() };
+    const q = { labour: num(labour), parts: num(parts), days: days!, warr: warr!, note: note.trim(), ...(isCenter ? { technicianId: techId } : {}) };
     if (await run(() => backend.sendQuote(get, set, j.id, q), 'Quote sent · the customer has been notified')) router.back();
   };
   const withdraw = () => Alert.alert('Withdraw your quote?', 'The customer will no longer see it, and you won’t be able to send another quote on this request.', [{ text: 'Keep', style: 'cancel' }, { text: 'Withdraw', style: 'destructive', onPress: async () => {
@@ -218,6 +222,17 @@ export function SendQuote() {
       <Field label="Ready in" required error={tried && err.days}><NumberChoice options={[1, 2, 3, 5, 7]} value={days} onChange={setDays} unit="day" max={90} invalid={!!(tried && err.days)} /></Field>
       <Field label="Warranty" required error={tried && err.warr}><NumberChoice options={[1, 2, 3, 6]} value={warr} onChange={setWarr} unit="month" max={24} invalid={!!(tried && err.warr)} /></Field>
       <Field label="Note to customer (optional)"><Input value={note} onChangeText={setNote} multiline placeholder="Part quality, what’s included, how long it takes on site…" /></Field>
+      {isCenter ? (
+        <Field label="Assign to technician" required error={tried && !techId ? 'Pick a team member' : null}>
+          {team.length ? (
+            <Chips>
+              {team.map(m => <Chip key={m.id} label={m.name} tone={techId === m.id ? 'on' : undefined} onPress={() => setTechId(m.id)} />)}
+            </Chips>
+          ) : (
+            <Card tone="soft" style={{ paddingVertical: 10 }}><Muted style={{ fontSize: 13 }}>No team members yet — add technicians from the <Link onPress={() => router.push('/center-team')}>Team</Link> tab before quoting.</Muted></Card>
+          )}
+        </Field>
+      ) : null}
       <Card tone="blue"><KV k="Customer pays" v={N(total)} /><KV k={`RepairHub commission (${COMMISSION}%)`} v={`−${N(total * COMMISSION / 100)}`} /><View style={{ height: 1, backgroundColor: C.primaryLine, marginVertical: 4 }} /><Row><Bold>You receive</Bold><Bold style={{ fontSize: 18 }}>{N(net(total))}</Bold></Row></Card>
       <Muted>Valid for 7 days. You can withdraw it until the customer chooses, but it can’t be edited or re-sent, so check the price first. Include travel in your price for home service.</Muted>
     </Screen>

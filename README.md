@@ -7,6 +7,11 @@ This is the Expo (React Native + TypeScript) app, connected to the **RepairHub A
 - Base URL: https://repairhub-api-1.onrender.com/api
 - Swagger: https://repairhub-api-1.onrender.com/api-docs
 - Backend repo: https://github.com/Code4Frankie/RepairHub_api
+- **Figma design (Group 9 — Repair Hub):** https://www.figma.com/design/orAUZeW4pHVGIFejPLTjWP/Group-9-Project---Repair-Hub?node-id=0-1&t=yc179zs6Mfv0l5IX-1
+
+**Tech-writing reference:** the mobile screen reference (all 50 screens) is in [`docs/screens/`](docs/screens/README.md), with single-file copies at [`SCREENS.md`](SCREENS.md) and [`screens.zip`](screens.zip).
+
+**API connectivity:** every screen-to-endpoint wiring plus the known backend gaps and how to close them is documented in [`docs/API-CONNECTIVITY.md`](docs/API-CONNECTIVITY.md).
 
 ## Run it
 

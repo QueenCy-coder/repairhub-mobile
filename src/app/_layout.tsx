@@ -32,7 +32,7 @@ function Toast() {
 function LaunchSplash() {
   const { get } = useStore();
   // Signed in on this device: open straight into their app; otherwise the Welcome screen.
-  const home = () => { const a = get().api; return !a ? '/' : a.role === 'technician' ? (get().techVerif === 'new' ? '/tech-register' : '/tech-home') : '/home'; };
+  const home = () => { const a = get().api; return !a ? '/' : a.role === 'technician' ? (get().techVerif === 'new' ? '/tech-register' : '/tech-home') : a.role === 'service_center' ? '/center-home' : '/home'; };
   const [shown, setShown] = useState(true);
   const fade = useRef(new Animated.Value(1)).current;
   const scale = useRef(new Animated.Value(0.86)).current;
@@ -103,6 +103,7 @@ function Root() {
         <Stack.Screen name="index" options={{ animation: 'fade' }} />
         <Stack.Screen name="(customer)" options={{ animation: 'fade' }} />
         <Stack.Screen name="(tech)" options={{ animation: 'fade' }} />
+        <Stack.Screen name="(center)" options={{ animation: 'fade' }} />
         {['confirmed', 'review-done', 'job-done', 'withdraw-done'].map(n => <Stack.Screen key={n} name={n} options={{ gestureEnabled: false, animation: 'fade_from_bottom' }} />)}
       </Stack>
       <Toast />

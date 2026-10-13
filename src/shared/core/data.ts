@@ -9,7 +9,7 @@ export const MIN_PAYOUT = 1000; // FR-15 — the API's MIN_WITHDRAWAL
 export const ESCROW_RELEASE_MS = 72 * 3600e3; // US-005 — the API's AUTO_RELEASE_HOURS
 export const REQUEST_TTL_MS = 24 * 3600e3; // FR-7
 
-export type Role = 'customer' | 'technician';
+export type Role = 'customer' | 'technician' | 'service_center';
 export type Sort = 'price' | 'rated' | 'fast' | 'near';
 export type ClaimStatus = 'Submitted' | 'Accepted' | 'Disputed' | 'Resolved';
 export type Verif = 'new' | 'pending' | 'rejected' | 'verified';
@@ -33,7 +33,7 @@ export function sessionId(ref: string, yymmdd = '260930', hhmmss = '101500') {
 }
 export const TODAY = 'Wed 30 Sep 2026';
 export const maskAcct = (n: string) => `••${n.slice(-4)}`;
-export type TechQuote = { labour: number; parts: number; days: number; warr: number; note: string; qid?: string; status?: string };
+export type TechQuote = { labour: number; parts: number; days: number; warr: number; note: string; qid?: string; status?: string; technicianId?: string };
 /** `sample` = which RepairHub sample device the photo shows ('phone', 'ipad', …), so its before/after partner can be found. */
 export type Media = { uri: string; type: 'image' | 'video'; name?: string | null; size?: number | null; sample?: SampleKind | null };
 export type SampleKind = 'phone' | 'ipad' | 'laptop' | 'desktop' | 'printer';
@@ -135,6 +135,20 @@ export type State = {
   techPoint?: Point | null;
   /** Technician: status of each quote they've sent, by request id (pending, accepted, withdrawn, expired…). */
   quoteStatus?: Record<string, string>;
+  // service center
+  /** The center's profile id on the server. */
+  centerId?: string;
+  /** Business name (used instead of a personal name on the center screens). */
+  centerName: string;
+  centerDesc: string; centerAddress: string;
+  /** Business verification (business docs, submitted for admin review). */
+  centerVerif: Verif;
+  /** Rating, review count and completed jobs from the center's public profile. */
+  centerRating?: { avg: number; count: number; jobs: number };
+  /** When the current verification docs were last sent, for "reviewing since …". */
+  centerSubmittedAt: number;
+  /** Technicians employed by this center (the ones its quotes are assigned to). */
+  centerTeam: { id: string; name: string; email: string; phone: string }[];
   /** Unread notifications, as counted by the server. */
   unreadCount?: number;
   wallet?: { balance: number; withdrawable: number };
@@ -163,6 +177,7 @@ export const initialState = (): State => ({
   photos: [], progressPhotos: [], claimMedia: [], disputeMedia: [],
   rescheduled: 0, cancelled: false, custWallet: 0, custTxns: [],
   simOffline: false, queue: [], lastSync: null, jobLog: [], techStage: 0, payoutAccount: null, withdrawals: [], notifications: [], toast: null,
+  centerName: '', centerDesc: '', centerAddress: '', centerVerif: 'new', centerSubmittedAt: 0, centerTeam: [],
   api: null, catIds: {}, rid: null, jobId: null, apptId: null, warrantyId: null, payRef: null, apiQuotes: [], board: [],
 });
 
@@ -294,6 +309,8 @@ const NO_QUOTE: Quote = { id: '', name: 'Technician', rating: 0, jobs: 0, km: Na
 /** The chosen quote. On a technician's device the live job's own quote (their price), else the customer's choice. */
 export const selectedQuote = (s: State): Quote => {
   if (s.api?.role === 'technician' && s.jobId) return { ...NO_QUOTE, id: 'emeka', name: displayName(s.techName), rating: s.techRating?.avg ?? 0, jobs: s.techRating?.jobs ?? 0, labour: s.qLabour, parts: s.qParts, days: s.qDays, warr: s.qWarr, note: s.qNote, total: s.qLabour + s.qParts };
+  // A service center's live job uses the same local quote state as a technician's.
+  if (s.api?.role === 'service_center' && s.jobId) return { ...NO_QUOTE, id: 'emeka', name: displayName(s.centerName), rating: s.centerRating?.avg ?? 0, jobs: s.centerRating?.jobs ?? 0, labour: s.qLabour, parts: s.qParts, days: s.qDays, warr: s.qWarr, note: s.qNote, total: s.qLabour + s.qParts };
   return quotes(s).find(q => q.id === s.sel) || quotes(s)[0] || NO_QUOTE;
 };
 export const escrowTotal = (s: State) => selectedQuote(s).total + (s.mode === 'home' ? HOME_SERVICE_FEE : 0);
@@ -446,7 +463,7 @@ export const jobById = (s: State, id: string) => jobs(s).find(j => j.id === id) 
  */
 export type CompletedJob = { id: string; dev: string; cust: string; gross: number; date: string; month: number; cat: string };
 export type DoneJob = { tech: string; id: string; dev: string; cust: string; cat: string; gross: number; at: number; rating: number;
-  custPhone?: string; techName?: string; service?: string; warr?: number; status?: 'Completed' | 'Cancelled'; before?: string; after?: string; reviewText?: string; tags?: string[]; reply?: string; apiJobId?: string; warrDays?: number; warrId?: string; warrUntil?: number };
+  custPhone?: string; techName?: string; service?: string; warr?: number; status?: 'Completed' | 'Cancelled'; before?: string; after?: string; reviewText?: string; tags?: string[]; reply?: string; reviewId?: string; apiJobId?: string; warrDays?: number; warrId?: string; warrUntil?: number };
 const DEMO_TECH_PHONE = '806 221 4490';
 /** The live job, once paid, added to the permanent record (called when the next request starts). */
 export function archiveLiveJob(p: State): DoneJob[] {
