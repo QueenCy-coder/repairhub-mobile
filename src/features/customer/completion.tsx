@@ -14,22 +14,25 @@ export function Complete() {
   if (s.status < JobStatus.Completed) return <Screen title="Repair"><Empty title="Not finished yet" sub="You can confirm once the technician marks the repair complete." action="Back to tracking" onPress={() => router.replace('/track')} /></Screen>;
   const released = s.status >= JobStatus.Released;
   const disputed = !!s.dispute && s.dispute.status !== 'Resolved';
-  const confirm = () => Alert.alert(`Release ${N(total)} to ${first(q.name)}?`, 'Only confirm if the repair works. Your warranty starts today.', [
+  // Paid in cash: nothing is held, so there is nothing to release (and no 72-hour auto-release).
+  const cash = s.payState === 'cash' || s.payState === 'cash_settled';
+  const confirm = () => Alert.alert(cash ? 'Confirm the repair is done?' : `Release ${N(total)} to ${first(q.name)}?`, cash ? `Only confirm if the repair works. Pay ${N(total)} in cash to ${first(q.name)}. Your warranty starts today.` : 'Only confirm if the repair works. Your warranty starts today.', [
     { text: 'Not yet', style: 'cancel' },
-    { text: 'Confirm & release', onPress: async () => {
-      if (await run(() => backend.confirmRelease(get, set), `${N(total)} released to ${first(q.name)} · warranty active`)) router.push('/review');
+    { text: cash ? 'Confirm' : 'Confirm & release', onPress: async () => {
+      if (await run(() => backend.confirmRelease(get, set), cash ? 'Repair confirmed · warranty active' : `${N(total)} released to ${first(q.name)} · warranty active`)) router.push('/review');
     } },
   ]);
   return (
     <Screen title="" footer={released ? <Btn title="View warranty" onPress={() => router.push('/warranty')} /> : disputed ? <Btn title="View issue status" variant="sec" onPress={() => router.push('/track')} /> : <>
-      <Btn title={`Confirm & release ${N(total)}`} onPress={confirm} />
+      <Btn title={cash ? 'Confirm repair is done' : `Confirm & release ${N(total)}`} onPress={confirm} />
       <Btn title="Report an Issue →" variant="danger" onPress={() => router.push('/report')} />
     </>}>
       <SuccessMark size={48} />
       <Title style={{ textAlign: 'center', marginTop: 10, fontSize: 19 }}>Repair Completed!</Title>
-      <Muted style={{ textAlign: 'center' }}>{released ? 'You confirmed this repair. Payment was released and your warranty is active.' : `${first(q.name)} marked your repair as completed. Please check your device.`}</Muted>
-      {disputed ? <Banner tone="bad" icon="!">{`Issue ${s.dispute!.id} is ${s.dispute!.status.toLowerCase()}. Payment stays frozen until RepairHub decides.`}</Banner> : null}
-      {!released && !disputed ? <Card tone="hi" style={{ marginTop: 14, alignItems: 'center' }}>
+      <Muted style={{ textAlign: 'center' }}>{released ? (cash ? 'You confirmed this repair and your warranty is active.' : 'You confirmed this repair. Payment was released and your warranty is active.') : `${first(q.name)} marked your repair as completed. Please check your device.`}</Muted>
+      {disputed ? <Banner tone="bad" icon="!">{cash ? `Issue ${s.dispute!.id} is ${s.dispute!.status.toLowerCase()}. RepairHub will review both sides.` : `Issue ${s.dispute!.id} is ${s.dispute!.status.toLowerCase()}. Payment stays frozen until RepairHub decides.`}</Banner> : null}
+      {!released && !disputed && cash ? <Card tone="hi" style={{ marginTop: 14, alignItems: 'center' }}><Muted>Pay in cash</Muted><T style={{ fontSize: 26, fontWeight: '800' }}>{N(total)}</T><Muted style={{ fontSize: 12 }}>to {first(q.name)}, once you’re happy with the repair</Muted></Card> : null}
+      {!released && !disputed && !cash ? <Card tone="hi" style={{ marginTop: 14, alignItems: 'center' }}>
         <Muted>Payment releases automatically in</Muted><Countdown until={s.completedAt + ESCROW_RELEASE_MS} style={{ fontSize: 26, fontWeight: '800' }} /><Muted style={{ fontSize: 12 }}>unless you confirm or report an issue</Muted>
       </Card> : null}
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>

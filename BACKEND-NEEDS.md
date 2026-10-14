@@ -33,7 +33,7 @@ The live server answers, but today it has **0 categories, 0 technicians and no a
 
 | # | Missing | What the app does now | Suggested addition |
 |---|---|---|---|
-| 1 | **Progress notes without a status change.** The job only moves between statuses, so "Diagnosis completed" and "Repair in progress" (both `in_progress`) can't be recorded. | Those two updates stay on the technician's phone only; the customer's tracker doesn't show them, and they reset if the technician switches phones. | `POST /repair-jobs/:id/updates { note, stage }`, or allow a same-status update with a note. |
+| 1 | **Progress notes without a status change.** "Diagnosis completed" and "Repair in progress" share the `in_progress` status, and the server refuses a same-status update (409), so the customer never saw them. | The app sends them as a same-status update with a note; a server that refuses (409) leaves them on the technician's phone only. | **Ready-made fix:** `tools/backend-patches/progress-notes.patch` (7 lines in `controller/repairJobController.js`, applies to the fork; its `npm run e2e` still passes 74/74). A same-status update that carries a note is recorded and notifies the customer. |
 | 2 | **"On the way" job status.** | Uses `diagnosing` for it. | Add an `on_the_way` status (after `accepted`). |
 | 3 | **Technician progress and completion photos.** | Photo step removed; the customer only sees their own "before" photo. | `POST /repair-jobs/:id/media` (multipart) and `mediaUrls` on the job. |
 | 4 | **Preferred date, time and service type on a repair request.** | Added to the end of `problemDescription` ("Preferred: Thu 15 Oct · 1:00 – 4:00 PM · Home service") and parsed back. | Fields `preferredDate`, `preferredTime`, `serviceMode` on the request. |

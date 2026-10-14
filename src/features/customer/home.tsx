@@ -102,7 +102,8 @@ export function ActiveRepairCard() {
   const steps = ['Request sent', 'Quotes in', 'Booking confirmed', s.mode === 'home' ? 'Technician on the way' : 'Device dropped off', 'Repair in progress', 'Repair completed', 'Payment released'];
   const [done, step] = ({ [JobStatus.Requested]: [1, 1], [JobStatus.Quoted]: [2, 2], [JobStatus.Booked]: [2, 2], [JobStatus.Accepted]: [3, 3], [JobStatus.OnTheWay]: [3, 3],
     [JobStatus.InProgress]: [4, 4], [JobStatus.Completed]: [5, 5], [JobStatus.Released]: [7, 6] } as Record<number, [number, number]>)[s.status] ?? [0, 0];
-  const stepNote = s.status === JobStatus.Quoted ? (s.jobId ? 'pay to confirm' : 'choose a quote') : s.status === JobStatus.Accepted ? 'up next' : s.status === JobStatus.Completed ? 'check & confirm' : '';
+  const stepLabel = s.status === JobStatus.Quoted ? (s.jobId ? 'Pay to confirm your booking' : 'Choose a quote') : steps[step];
+  const stepNote = s.status === JobStatus.Accepted ? 'up next' : s.status === JobStatus.Completed ? 'check & confirm' : '';
   const photo = s.photos.find(p => p.type === 'image');
   const action: [string, React.ComponentProps<typeof Ionicons>['name']] =
     s.status === JobStatus.Requested ? ['View', 'time-outline']
@@ -138,7 +139,7 @@ export function ActiveRepairCard() {
         <View style={{ flexDirection: 'row', gap: 4, marginTop: 14 }}>
           {steps.map((_, i) => <View key={i} style={{ flex: 1, height: 5, borderRadius: 3, backgroundColor: i < done ? '#fff' : i === step ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.28)' }} />)}
         </View>
-        <Row style={{ marginTop: 6, gap: 8 }}><Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', flex: 1 }} numberOfLines={1}>{steps[step]}{stepNote ? <Text style={{ color: '#D1E0FF', fontWeight: '400' }}> · {stepNote}</Text> : null}</Text><Text style={{ color: '#D1E0FF', fontSize: 12 }}>Step {step + 1} of {steps.length}</Text></Row>
+        <Row style={{ marginTop: 6, gap: 8 }}><Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', flex: 1 }} numberOfLines={1}>{stepLabel}{stepNote ? <Text style={{ color: '#D1E0FF', fontWeight: '400' }}> · {stepNote}</Text> : null}</Text><Text style={{ color: '#D1E0FF', fontSize: 12 }}>Step {step + 1} of {steps.length}</Text></Row>
         <View style={{ marginTop: 12, backgroundColor: '#fff', borderRadius: 14, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           {q ? <Avatar label={q.name} size={36} verified /> : <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: C.primarySoft, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={s.status === JobStatus.Quoted ? 'pricetags' : 'radio'} size={18} color={C.primary} /></View>}
           <View style={{ flex: 1 }}>

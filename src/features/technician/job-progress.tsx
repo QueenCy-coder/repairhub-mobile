@@ -183,7 +183,7 @@ export function JobDone() {
       <View style={{ alignItems: 'center', marginTop: 8 }}>
         <SuccessMark size={56} />
         <Title style={{ marginTop: 12, fontSize: 20 }}>Repair completed!</Title>
-        <Muted style={{ textAlign: 'center', fontSize: 14 }}>{s.status >= JobStatus.Released ? `${custFirst(s)} confirmed the repair. The payment is in your wallet.` : `${custFirst(s)} has been notified. Your payment is released when they confirm, or automatically after 72 hours.`}</Muted>
+        <Muted style={{ textAlign: 'center', fontSize: 14 }}>{(s.payState === 'cash' || s.payState === 'cash_settled') ? (s.status >= JobStatus.Released ? `${custFirst(s)} confirmed the repair.` : `${custFirst(s)} has been notified. Collect the cash payment from them.`) : s.status >= JobStatus.Released ? `${custFirst(s)} confirmed the repair. The payment is in your wallet.` : `${custFirst(s)} has been notified. Your payment is released when they confirm, or automatically after 72 hours.`}</Muted>
       </View>
       <Card tone="blue" style={{ marginTop: 18, padding: 0, overflow: 'hidden' }}>
         <Row style={{ justifyContent: 'flex-start', gap: 12, padding: 12 }}>

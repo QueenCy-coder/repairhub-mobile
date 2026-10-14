@@ -15,6 +15,7 @@ import { NoBooking } from './booking';
 
 export function Track() {
   const { s } = useStore();
+  const cashJob = s.payState === 'cash' || s.payState === 'cash_settled';
   if (s.status < JobStatus.Accepted && (s.cancelled || s.status === JobStatus.Quoted)) return <NoBooking />;
   if (s.status < JobStatus.Accepted) return <Screen title="Track repair"><Empty title="Nothing to track yet" sub="Progress shows up here once you book and pay." action="Go home" onPress={() => router.replace('/home')} /></Screen>;
   const q = selectedQuote(s), open = !!s.dispute && s.dispute.status !== 'Resolved', ref = shortRef(s.rid);
@@ -25,7 +26,7 @@ export function Track() {
           : <>{s.qBy?.phone ? <CallButton name={q.name} role={`Your technician · ${ref}`} phone={intl(s.qBy.phone)} label={`Call ${first(q.name)}`} /> : null}{s.status < JobStatus.Completed ? <Btn icon="calendar-outline" title="Manage appointment" variant="ghost" onPress={() => router.push('/appointments')} /> : null}</>}>
       <Muted>Request ID: {ref}</Muted>
       {s.dispute?.status === 'Resolved' && s.dispute.outcome && s.status < JobStatus.Released ? <Banner tone="ok" icon="⚖︎">{`Issue ${s.dispute.id} resolved. ${s.dispute.outcome}`}</Banner> : null}
-      {open ? <Banner tone="bad" icon="!">{`Problem reported (${s.dispute!.status.toLowerCase()}). ${N(escrowTotal(s))} stays frozen in escrow until RepairHub decides.`}</Banner> : null}
+      {open ? <Banner tone="bad" icon="!">{cashJob ? `Problem reported (${s.dispute!.status.toLowerCase()}). RepairHub will review both sides.` : `Problem reported (${s.dispute!.status.toLowerCase()}). ${N(escrowTotal(s))} stays frozen in escrow until RepairHub decides.`}</Banner> : null}
       {s.status === JobStatus.OnTheWay && s.mode === 'home' ? <TrackMap since={onTheWayAt(s)} techName={q.name} address={s.location || LEKKI.label} /> : null}
       <Timeline items={trackSteps(s)} />
       {s.progressPhotos.length ? <><H4>Photos from {first(q.name)}</H4><MediaGrid items={s.progressPhotos} max={s.progressPhotos.length} /></> : null}
@@ -39,6 +40,7 @@ export function Track() {
 
 export function Report() {
   const { s, set, get, run, busy } = useStore();
+  const cashJob = s.payState === 'cash' || s.payState === 'cash_settled';
   const [tried, setTried] = React.useState(false);
   const descErr = s.dDesc.trim().length < 15 ? 'Tell us what happened in at least 15 characters' : null;
   // After payment is released there is nothing left in escrow to freeze: problems are handled under the warranty.
@@ -54,10 +56,10 @@ export function Report() {
       if (descErr) { setTried(true); return; }
       // The API takes one reason text: what went wrong, the details, and what the customer wants.
       const reason = `${s.dReason}: ${s.dDesc.trim()} (Wants: ${s.dWant})`;
-      if (!(await run(() => backend.openDispute(get, set, reason, s.disputeMedia), 'Report sent · payment frozen'))) return;
+      if (!(await run(() => backend.openDispute(get, set, reason, s.disputeMedia), cashJob ? 'Report sent' : 'Report sent · payment frozen'))) return;
       if (router.canDismiss()) router.dismissAll(); router.push('/track');
     }} />}>
-      <Banner tone="warn" icon="🔒">{`Your ${N(escrowTotal(s))} stays frozen in escrow while a RepairHub admin reviews both sides.`}</Banner>
+      <Banner tone="warn" icon="🔒">{cashJob ? 'A RepairHub admin will review both sides and contact you.' : `Your ${N(escrowTotal(s))} stays frozen in escrow while a RepairHub admin reviews both sides.`}</Banner>
       <Field label="What went wrong?">{['Repair not done properly', 'New damage to my device', 'Charged more than the quote', 'Technician didn’t show up', 'Other'].map(o => <Opt key={o} label={o} on={s.dReason === o} onPress={() => set({ dReason: o })} />)}</Field>
       <Field label="Details" required error={tried && descErr}><Input invalid={!!(tried && descErr)} value={s.dDesc} onChangeText={t => set({ dDesc: t })} multiline placeholder="Tell us what happened" /></Field>
       <Field label="Evidence"><MediaGrid items={s.disputeMedia} max={3} onAdd={async () => { const m = await pickMedia({ limit: 3 - s.disputeMedia.length, allowVideo: true }); set(p => ({ disputeMedia: [...p.disputeMedia, ...m] })); }} onRemove={i => set(p => ({ disputeMedia: p.disputeMedia.filter((_, j) => j !== i) }))} /></Field>
