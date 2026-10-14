@@ -44,11 +44,16 @@ export function unpackDesc(raw = '') {
  * fields (preferredDate / preferredTime / serviceMode); older ones packed them into the
  * description ("…PREF Mon 20 Oct · 2:00 pm · Home"). Both are handled here.
  */
+const WANT = '\n\nRequested technician: ';
 function prefsOf(r: any) {
-  const desc = String(r?.problemDescription ?? '').replace(/\r\n/g, '\n');
+  const raw = String(r?.problemDescription ?? '').replace(/\r\n/g, '\n');
+  // A customer who picked a technician from their profile: the name rides at the end of the description (the API has no field for it).
+  const wi = raw.lastIndexOf(WANT);
+  const wants = wi >= 0 ? raw.slice(wi + WANT.length).trim() : '';
+  const text = wi >= 0 ? raw.slice(0, wi) : raw;
   if (r?.preferredDate || r?.preferredTime || r?.serviceMode)
-    return { desc, prefDate: r.preferredDate ?? '', prefTime: r.preferredTime ?? '', mode: (r.serviceMode === 'home' ? 'home' : 'shop') as 'home' | 'shop' };
-  return unpackDesc(desc);
+    return { desc: text, wants, prefDate: r.preferredDate ?? '', prefTime: r.preferredTime ?? '', mode: (r.serviceMode === 'home' ? 'home' : 'shop') as 'home' | 'shop' };
+  return { ...unpackDesc(text), wants };
 }
 
 /** "Thu 8 Oct" + "10:00 AM – 1:00 PM" → the next such date/time in the future (ISO), as the API requires. */
@@ -245,6 +250,10 @@ export function refresh(get: Get, set: Set): Promise<void> {
 }
 let doneAt = 0;
 /** Refresh unless an action already did a moment ago (keeps request counts down). */
+/** Right after documents go in, look for the verification result when it is due (and shortly after) instead of waiting for the next poll. */
+function watchVerification(get: Get, set: Set, field: 'techVerif' | 'centerVerif') {
+  [5200, 6200, 7500, 9500].forEach(ms => setTimeout(() => { if (get().api && get()[field] === 'pending') { extrasDue = true; refresh(get, set).catch(() => {}); } }, ms));
+}
 export const refreshIfStale = (get: Get, set: Set, ms = 3000) => (Date.now() - doneAt < ms ? Promise.resolve() : refresh(get, set));
 
 let topNote = '';
@@ -278,7 +287,7 @@ async function loadQuotes(rid: string, get: Get, set: Set, at: Point | null) {
     const p = profiles[i];
     return { role: 'technician', name: q.name, phone: '', email: '', pwHash: null, provider: 'password', onboarded: true, createdAt: ts(p?.createdAt),
       verif: 'verified', skills: skillsOf(cur, p?.serviceCategoryIds ?? []), areas: p?.serviceAreas ?? q.areas ?? [],
-      apiId: q.techId, bio: p?.bio, years: p?.experienceYears, rating: q.rating, reviews: q.reviews ?? 0, jobs: q.jobs } as Account;
+      apiId: q.techId, photo: p?.photoUrl ?? null, bio: p?.bio, years: p?.experienceYears, rating: q.rating, reviews: q.reviews ?? 0, jobs: q.jobs } as Account;
   });
   set(p => ({ apiQuotes: quotes, accounts: [...accounts, ...p.accounts.filter(a => !accounts.some(b => b.name === a.name))] }));
   return quotes;
@@ -409,7 +418,7 @@ async function refreshTech(get: Get, set: Set) {
   const s0 = get();
   const skills = skillsOf(s0, prof.serviceCategoryIds ?? []);
   const techVerif = prof.verificationStatus === 'verified' ? 'verified' : prof.verificationStatus === 'rejected' ? 'rejected' : prof.verificationDocs?.length ? 'pending' : 'new';
-  set({ techProfileId: prof._id, techVerif, rejectNote: prof.verificationFeedback ?? '', ...(skills.length ? { skills } : {}), ...(prof.serviceAreas?.length ? { areas: prof.serviceAreas } : {}),
+  set({ techProfileId: prof._id, techVerif, rejectNote: prof.verificationFeedback ?? '', ...(prof.photoUrl ? { techPhoto: prof.photoUrl } : {}), ...(skills.length ? { skills } : {}), ...(prof.serviceAreas?.length ? { areas: prof.serviceAreas } : {}),
     techRating: { avg: prof.ratingAvg ?? 0, count: prof.ratingCount ?? 0, jobs: prof.jobsCompleted ?? 0 }, techSubmittedAt: ts(prof.updatedAt) });
   if (techVerif !== 'verified') return notifications(get, set);
   // Technicians who registered before locations were saved: use their first service area's centre (no prompt).
@@ -436,7 +445,7 @@ async function refreshTech(get: Get, set: Set) {
   const base = fromGeo(prof.baseLocation);
   const board: Job[] = open.map(r => {
     const u = prefsOf(r), at = fromGeo(r.location);
-    return { id: r._id, cust: 'Customer', dev: r.brandModel || r.itemType, issue: u.desc, cat: catName(s, r.serviceCategoryId), area: areaOf(r.address ?? ''),
+    return { id: r._id, wants: u.wants, cust: 'Customer', dev: r.brandModel || r.itemType, issue: u.desc, cat: catName(s, r.serviceCategoryId), area: areaOf(r.address ?? ''),
       km: base && at ? Math.round(distanceKm(base, at) * 10) / 10 : NaN, ago: agoLabel(ts(r.createdAt)),
       photos: r.mediaUrls?.length ?? 0, when: u.prefDate ? `${u.prefDate}${u.prefTime ? `, ${u.prefTime}` : ''}` : 'Flexible', mode: u.mode === 'home' ? 'Home service' : 'Visit shop', media: r.mediaUrls ?? [], address: r.address ?? '' } as Job;
   });
@@ -532,7 +541,7 @@ async function refreshCenter(get: Get, set: Set) {
   const base = fromGeo(prof.location);
   const board: Job[] = open.map(r => {
     const u = prefsOf(r), at = fromGeo(r.location);
-    return { id: r._id, cust: 'Customer', dev: r.brandModel || r.itemType, issue: u.desc, cat: catName(s, r.serviceCategoryId), area: areaOf(r.address ?? ''),
+    return { id: r._id, wants: u.wants, cust: 'Customer', dev: r.brandModel || r.itemType, issue: u.desc, cat: catName(s, r.serviceCategoryId), area: areaOf(r.address ?? ''),
       km: base && at ? Math.round(distanceKm(base, at) * 10) / 10 : NaN, ago: agoLabel(ts(r.createdAt)),
       photos: r.mediaUrls?.length ?? 0, when: u.prefDate ? `${u.prefDate}${u.prefTime ? `, ${u.prefTime}` : ''}` : 'Flexible', mode: u.mode === 'home' ? 'Home service' : 'Visit shop', media: r.mediaUrls ?? [], address: r.address ?? '' } as Job;
   });
@@ -595,8 +604,24 @@ export async function listTechnicians(get: Get, set: Set) {
   const cur = get();
   const accounts: Account[] = list.map(p => ({ role: 'technician', name: p.userId?.fullName ?? 'Technician', phone: '', email: '', pwHash: null, provider: 'password', onboarded: true,
     createdAt: ts(p.createdAt), verif: 'verified', skills: skillsOf(cur, p.serviceCategoryIds ?? []), areas: p.serviceAreas ?? [],
-    apiId: p._id, bio: p.bio, years: p.experienceYears, rating: Math.round((p.ratingAvg ?? 0) * 10) / 10, reviews: p.ratingCount ?? 0, jobs: p.jobsCompleted ?? 0 } as Account));
+    apiId: p._id, photo: p.photoUrl ?? null, bio: p.bio, years: p.experienceYears, rating: Math.round((p.ratingAvg ?? 0) * 10) / 10, reviews: p.ratingCount ?? 0, jobs: p.jobsCompleted ?? 0 } as Account));
   set(p => ({ accounts: [...accounts, ...p.accounts.filter(a => !accounts.some(b => b.apiId === a.apiId || b.name === a.name))] }));
+}
+
+/** Sets the technician's profile photo: shown at once, then saved on the server (a server without the upload keeps it on this phone only). */
+export async function uploadTechPhoto(get: Get, set: Set, m: Media): Promise<boolean> {
+  set({ techPhoto: m.uri });
+  const id = get().techProfileId ?? (await api<any>('GET', '/technician-profiles/me'))._id;
+  const form = new FormData();
+  await appendMedia(form, 'photo', [m]);
+  try {
+    const p = await api<any>('POST', `/technician-profiles/${id}/photo`, { form, timeoutMs: 120000 });
+    if (p?.photoUrl) set({ techPhoto: p.photoUrl });
+    return true;
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 404 || e.status === 403)) return false;
+    throw e;
+  }
 }
 
 /* ───────── customer actions ───────── */
@@ -608,7 +633,7 @@ export async function submitRequest(get: Get, set: Set) {
   form.append('serviceCategoryId', cats[s.cat]);
   form.append('itemType', s.cat);
   form.append('brandModel', s.model.trim());
-  form.append('problemDescription', s.desc.trim());
+  form.append('problemDescription', s.desc.trim() + (s.wantTech ? WANT + s.wantTech.name : ''));
   form.append('urgency', 'normal');
   form.append('address', s.location.trim());
   // The preferred date / time / service mode are real request fields on the API (no longer packed into the description).
@@ -749,11 +774,13 @@ export async function submitVerification(get: Get, set: Set, docs: Media[]) {
   await appendMedia(form, 'docs', docs.slice(0, 5));
   await api('POST', `/technician-profiles/${id}/verification-docs`, { form, timeoutMs: 120000 });
   set({ techVerif: 'pending', techSubmittedAt: Date.now() });
+  watchVerification(get, set, 'techVerif');
   extrasDue = true;
 }
 
 /** One quote per technician per request: the API can't edit a quote, and a withdrawn one still blocks a new one. */
 export async function sendQuote(get: Get, set: Set, requestId: string, q: TechQuote) {
+  if (!/^[a-f0-9]{24}$/i.test(requestId)) throw new ApiError('This request is no longer available. Go back to Jobs and pick another one.', 404);
   if (get().quoteStatus?.[requestId]) throw new ApiError('You’ve already sent a quote on this request.', 409);
   const body: Record<string, unknown> = { repairRequestId: requestId, laborCost: q.labour, partsCost: q.parts, estimatedDays: q.days, warrantyDays: q.warr * 30, ...(q.note.trim() ? { notes: q.note.trim() } : {}) };
   // A service center quotes as its team: the customer must know which technician will do the work.
@@ -837,6 +864,7 @@ export async function submitCenterVerification(get: Get, set: Set, docs: Media[]
   await appendMedia(form, 'docs', docs.slice(0, 5));
   await api('POST', `/service-centers/${id}/verification-docs`, { form, timeoutMs: 120000 });
   set({ centerVerif: 'pending', centerSubmittedAt: Date.now() });
+  watchVerification(get, set, 'centerVerif');
   extrasDue = true;
 }
 

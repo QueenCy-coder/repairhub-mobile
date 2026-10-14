@@ -5,6 +5,7 @@ import { Alert, View, Pressable, StyleSheet, Switch, Text, ScrollView, Animated 
 import { Avatar, Bar, Bold, Btn, C, Card, Chip, IconTile, Muted, Row, Screen, T, Input, FadeIn, Chips, Empty, Stars } from '../../shared/components/ui';
 import { techStats, maskAcct, plural, SERVICES, LAGOS_AREAS, myDoneJobs, shortDate } from '../../shared/core/data';
 import * as backend from '../../shared/core/backend';
+import { pickMedia } from '../../shared/core/native';
 import { useStore } from '../../shared/core/store';
 import { useLogout } from '../auth/login';
 import { OfflineStrip, areaSummary } from './common';
@@ -14,13 +15,31 @@ const MenuRow = ({ icon, label, sub, onPress }: { icon: string; label: string; s
   <Card onPress={onPress} style={{ paddingVertical: 12 }}><Row style={{ gap: 8 }}><Row style={{ justifyContent: 'flex-start', gap: 12, flex: 1 }}><IconTile glyph={icon} size={38} /><View style={{ flex: 1 }}><T style={{ fontSize: 15, fontWeight: '600' }}>{label}</T>{sub ? <T style={{ fontSize: 12, color: C.mute }} numberOfLines={1}>{sub}</T> : null}</View></Row><T style={{ color: C.mute }}>›</T></Row></Card>
 );
 
+/** Tap-to-change profile photo (camera or library): shown straight away, saved to the server when it supports it. */
+function TechPhoto({ size = 64 }: { size?: number }) {
+  const { s, get, set, run, toast } = useStore();
+  const change = async () => {
+    const [m] = await pickMedia({ limit: 1, allowVideo: false });
+    if (!m) return;
+    let saved = true;
+    const ok = await run(async () => { saved = await backend.uploadTechPhoto(get, set, m); });
+    if (ok) toast(saved ? 'Profile photo updated' : 'Photo saved on this phone');
+  };
+  return (
+    <Pressable onPress={change} accessibilityRole="button" accessibilityLabel={s.techPhoto ? 'Change profile photo' : 'Add a profile photo'}>
+      <Avatar label={s.techName} size={size} uri={s.techPhoto} verified={s.techVerif === 'verified'} />
+      <View style={{ position: 'absolute', right: -4, bottom: -4, width: 24, height: 24, borderRadius: 12, backgroundColor: C.primary, borderWidth: 2, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 11 }}>📷</Text></View>
+    </Pressable>
+  );
+}
+
 export function Me() {
   const { s } = useStore();
   const logout = useLogout();
   return (
     <Screen title="Profile" back={false}>
       <OfflineStrip showToggle />
-      <Row style={{ justifyContent: 'flex-start', gap: 14, marginBottom: 12 }}><Avatar label={s.techName} size={64} verified={s.techVerif === 'verified'} /><View style={{ flex: 1 }}><Bold style={{ fontSize: 18 }}>{s.techName}</Bold><Muted>Electronics technician{s.areas[0] ? ` · ${s.areas[0]}` : ''}</Muted><View style={{ marginTop: 6 }}><Bar pct={85} /></View><Muted style={{ fontSize: 12, marginTop: 2 }}>Profile 85% complete</Muted></View></Row>
+      <Row style={{ justifyContent: 'flex-start', gap: 14, marginBottom: 12 }}><TechPhoto /><View style={{ flex: 1 }}><Bold style={{ fontSize: 18 }}>{s.techName}</Bold><Muted>Electronics technician{s.areas[0] ? ` · ${s.areas[0]}` : ''}</Muted><View style={{ marginTop: 6 }}><Bar pct={85} /></View><Muted style={{ fontSize: 12, marginTop: 2 }}>Profile 85% complete</Muted></View></Row>
       <MenuRow icon="🛠" label="Services & coverage" sub={`${plural(s.skills.length + (s.extraServices ?? []).length, 'service')} · ${areaSummary(s.areas ?? [])}`} onPress={() => router.push('/services')} />
       <MenuRow icon="⭐" label="Reviews" sub={techStats(s).reviews ? `${techStats(s).rating.toFixed(1)} · ${plural(techStats(s).reviews, 'review')}` : 'No reviews yet'} onPress={() => router.push('/reviews')} />
       <MenuRow icon="🛡" label="Verification" sub={s.techVerif === 'verified' ? 'Verified' : s.techVerif === 'rejected' ? 'Action needed' : 'In review'} onPress={() => router.push('/verification')} />

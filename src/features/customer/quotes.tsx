@@ -8,9 +8,9 @@ import { FadeIn, Btn, C, Card, Countdown, KV, Muted, Pulse, Screen, Title, Avata
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
 import { kmLabel } from '../../shared/core/geo';
-import { first, JobStatus, plural, quotes, N, selectedQuote, Sort, CERT_IMG, RECENT_WORK, repairPhoto, techProfile, serviceOf, agoLabel } from '../../shared/core/data';
+import { first, displayName, catName, JobStatus, categoryAvailable, plural, quotes, N, selectedQuote, Sort, CERT_IMG, RECENT_WORK, repairPhoto, techProfile, serviceOf, agoLabel } from '../../shared/core/data';
 import { useStore } from '../../shared/core/store';
-import { Viewer, catNoun } from './common';
+import { Viewer, catNoun, activeRoute } from './common';
 
 
 /** Cancel an open (not yet booked) request. Technicians who quoted are told; nothing was paid yet. */
@@ -110,12 +110,22 @@ export function Compare() {
 /* ───────── C-07 Book technician (Figma) ───────── */
 
 export function TechProfile() {
-  const { s, set } = useStore();
+  const { s, set, toast } = useStore();
   // The name comes with the link, so a sync update arriving at the same moment can't swap the profile.
   const { name } = useLocalSearchParams<{ name?: string }>();
   const n = name || s.profile, t = techProfile(s, n);
   // Only while the customer is still choosing: after that, a technician's profile isn't about that old quote.
   const q = s.status <= JobStatus.Quoted && !s.cancelled ? quotes(s).find(x => x.name === n) : undefined;
+  const apiId = s.accounts.find(a => a.apiId && (a.name === n || displayName(a.name) === n))?.apiId;
+  // “Request this technician”: starts the normal repair request with them named (other matching technicians can still quote).
+  const requestThem = () => {
+    if (s.rid && s.status >= JobStatus.Requested && s.status < JobStatus.Released && !s.cancelled) { toast('You already have an open repair request'); router.push(activeRoute(s.status) as never); return; }
+    const done = s.status >= JobStatus.Released || s.cancelled;
+    const cat = t.skills.find(k => categoryAvailable(s, k)) ?? s.cat;
+    const fresh = done ? { rid: null, jobId: null, apptId: null, warrantyId: null, payRef: null, apiQuotes: [], sel: null, claim: null, dispute: null, reviewed: false, rating: 0, status: JobStatus.None, cancelled: false, owner: null } : {};
+    set({ ...fresh, cat, model: '', modelOther: false, desc: '', photos: [], prefDate: '', prefTime: '', draftOwner: s.phone, wantTech: { id: String(apiId ?? n), name: n } });
+    router.push('/new-request');
+  };
   const canBook = !!q && s.status === JobStatus.Quoted && (!s.jobId || s.sel === q.id);
   const [view, setView] = React.useState<null | { items: { src: number | { uri: string }; caption: string }[]; i: number }>(null);
   const certs = t.certs.map(c => ({ c, src: CERT_IMG[c] }));
@@ -136,7 +146,7 @@ export function TechProfile() {
   return (
     <Screen pad={false} footer={canBook
       ? <Btn title={`Book ${first(n)} · ${N(q!.total)}`} onPress={() => { set({ sel: q!.id }); router.push(s.jobId ? '/pay' : '/book'); }} />
-      : <Btn title="Request a repair" onPress={() => router.push('/new-request')} />}>
+      : <Btn title={`Request ${first(n)}`} onPress={requestThem} />}>
       <View style={{ backgroundColor: C.primary, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 56 }}>
         <Row style={{ justifyContent: 'flex-start', gap: 12 }}>
           <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Back"><Ionicons name="arrow-back" size={24} color="#fff" /></Pressable>
@@ -144,7 +154,7 @@ export function TechProfile() {
         </Row>
       </View>
       <View style={{ paddingHorizontal: 16, marginTop: -44 }}>
-        <Row style={{ alignItems: 'flex-end' }}><View style={{ borderWidth: 4, borderColor: '#fff', borderRadius: 48 }}><Avatar label={n} size={84} verified /></View>{t.resp ? <Chip tone="ok" label={`● Online · replies ${t.resp}`} /> : <Chip tone="ok" label="✓ Verified by RepairHub" />}</Row>
+        <Row style={{ alignItems: 'flex-end' }}><View style={{ borderWidth: 4, borderColor: '#fff', borderRadius: 48 }}><Avatar label={n} size={84} verified uri={(t as { photo?: string | null }).photo ?? undefined} /></View>{t.resp ? <Chip tone="ok" label={`● Online · replies ${t.resp}`} /> : <Chip tone="ok" label="✓ Verified by RepairHub" />}</Row>
         <Title style={{ marginTop: 8, marginBottom: 2 }}>{n}</Title>
         <Muted>{t.title}</Muted>
         <Rating r={t.r} extra={`${t.reviews ? `(${plural(t.reviews, 'review')})` : '· no reviews yet'}${Number.isFinite(q?.km ?? NaN) ? ` · ${kmLabel(q!.km)} away` : Number.isFinite(t.km) ? ` · ${t.km} km away` : ''}`} />
@@ -160,7 +170,7 @@ export function TechProfile() {
         {q ? <Card tone="blue" style={{ marginTop: 14 }}><Row><View><Muted>Quote for {shortRef(s.rid)}</Muted><Bold style={{ fontSize: 20 }}>{N(q.total)}</Bold></View><View style={{ alignItems: 'flex-end' }}><Muted>{plural(q.days, 'day')} · {plural(q.warr, 'month')} warranty</Muted><Muted>Labour {N(q.labour)} · Parts {N(q.parts)}</Muted></View></Row></Card> : null}
 
         <H4>Service categories</H4>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>{t.skills.map(k => <View key={k} style={{ alignItems: 'center', gap: 4 }}><CatTile cat={k} /><Muted style={{ fontSize: 12 }}>{k}</Muted></View>)}</View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>{t.skills.map(k => <View key={k} style={{ alignItems: 'center', gap: 4 }}><CatTile cat={k} /><Muted style={{ fontSize: 12 }}>{catName(k)}</Muted></View>)}</View>
 
         <H4 right={<Row style={{ gap: 4 }}><Ionicons name="shield-checkmark" size={14} color={C.ok} /><Text style={{ fontSize: 12, color: C.ok, fontWeight: '600' }}>Checked by RepairHub</Text></Row>}>Certifications</H4>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>

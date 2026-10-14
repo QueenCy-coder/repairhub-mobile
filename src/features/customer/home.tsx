@@ -29,7 +29,8 @@ export function Home() {
     const done = s.status >= JobStatus.Released || s.cancelled;
     const blank = { model: '', modelOther: false, desc: '', photos: [], prefDate: '', prefTime: '' };
     const fresh = done ? { rid: null, jobId: null, apptId: null, warrantyId: null, payRef: null, apiQuotes: [], sel: null, claim: null, dispute: null, reviewed: false, rating: 0, status: JobStatus.None, cancelled: false, owner: null } : {};
-    set(model ? { ...fresh, cat, model, modelOther: !isListedModel(cat, model), desc: desc ?? '', draftOwner: s.phone } : done ? { ...fresh, cat, ...blank, draftOwner: s.phone } : cat === s.cat ? { cat } : { cat, model: '', modelOther: false, desc: '', photos: [] });
+    // Starting from a category tile is a general request: no technician is named.
+    set({ wantTech: null, ...(model ? { ...fresh, cat, model, modelOther: !isListedModel(cat, model), desc: desc ?? '', draftOwner: s.phone } : done ? { ...fresh, cat, ...blank, draftOwner: s.phone } : cat === s.cat ? { cat } : { cat, model: '', modelOther: false, desc: '', photos: [] }) });
     router.push('/new-request');
   };
   return (
@@ -169,7 +170,7 @@ export function Search() {
   const known = new Set(shownCategories());
   const all = s.accounts.filter(a => a.role === 'technician' && a.apiId).map(a => ({
     id: String(a.apiId), name: a.name, r: a.rating ?? 0, jobs: a.jobs ?? 0, areas: a.areas ?? [],
-    skills: (a.skills ?? []).filter(k => known.has(k)),
+    skills: (a.skills ?? []).filter(k => known.has(k)), photo: a.photo ?? undefined,
   }));
   const needle = q.trim().toLowerCase();
   const list = all
@@ -191,7 +192,7 @@ export function Search() {
       <Banner tone="blue" icon="ℹ︎">Every technician here is verified by RepairHub. Prices come from quotes: post one request and compare quotes side by side.</Banner>
       {list.map(t => (
         <Card key={t.id} onPress={() => { set({ profile: t.name }); router.push({ pathname: '/tech-profile', params: { name: t.name } }); }}>
-          <Row style={{ justifyContent: 'flex-start', gap: 12 }}><Avatar label={t.name} verified /><View style={{ flex: 1 }}><Bold>{t.name}</Bold><Muted>{skillLine(t.skills)}</Muted><Rating r={t.r} extra={`(${plural(t.jobs, 'job')})${t.areas.length ? ` · ${t.areas.slice(0, 2).join(', ')}` : ''}`} /></View><Ionicons name="chevron-forward" size={18} color={C.mute} /></Row>
+          <Row style={{ justifyContent: 'flex-start', gap: 12 }}><Avatar label={t.name} verified uri={t.photo} /><View style={{ flex: 1 }}><Bold>{t.name}</Bold><Muted>{skillLine(t.skills)}</Muted><Rating r={t.r} extra={`(${plural(t.jobs, 'job')})${t.areas.length ? ` · ${t.areas.slice(0, 2).join(', ')}` : ''}`} /></View><Ionicons name="chevron-forward" size={18} color={C.mute} /></Row>
         </Card>
       ))}
       {!list.length && loaded ? <Empty title={q || cat ? 'No matches' : 'No verified technicians yet'} sub={q || cat ? 'Try another repair type or clear the filters.' : 'Post a request and let technicians come to you.'} action={q || cat ? 'Clear filters' : 'Request a repair'} onPress={() => { if (q || cat) { setQ(''); setCat(null); } else router.push('/new-request'); }} /> : null}

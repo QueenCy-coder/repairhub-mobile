@@ -128,14 +128,16 @@ export async function notificationsAllowed(): Promise<boolean | null> {
  * Delivers a sign-up code as a notification that reads like the email or text it stands in for (there is no
  * email/SMS service yet). Returns false when it couldn't be delivered.
  */
-export async function pushCode(code: string, to = '', channel: 'email' | 'phone' = 'email'): Promise<boolean> {
+export async function pushCode(code: string, to = '', channel: 'email' | 'phone' = 'email', kind: 'verify' | 'reset' = 'verify'): Promise<boolean> {
   if (!code) return false;
   const email = channel === 'email';
-  const title = email ? 'RepairHub · Verify your account' : 'RepairHub';
+  const title = kind === 'reset' ? 'RepairHub · Reset your password' : email ? 'RepairHub · Verify your account' : 'RepairHub';
   const subtitle = email && to ? `To: ${to}` : undefined;
-  const body = email
-    ? `Your verification code is ${code}. It expires in 10 minutes. If you didn’t create a RepairHub account, you can ignore this email.`
-    : `${code} is your RepairHub verification code. It expires in 10 minutes. Don’t share it with anyone.`;
+  const body = kind === 'reset'
+    ? `Your password reset code is ${code}. It expires in 1 hour. If you didn’t ask to reset your password, you can ignore this email.`
+    : email
+      ? `Your verification code is ${code}. It expires in 10 minutes. If you didn’t create a RepairHub account, you can ignore this email.`
+      : `${code} is your RepairHub verification code. It expires in 10 minutes. Don’t share it with anyone.`;
   try {
     if (Platform.OS === 'web') {
       const W = (globalThis as { Notification?: { permission: string; requestPermission: () => Promise<string>; new (t: string, o?: { body?: string }): unknown } }).Notification;

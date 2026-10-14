@@ -65,6 +65,8 @@ export type State = {
   otp: string;
   /** When the technician submitted their application (shown on Verification status). */
   techSubmittedAt: number; techPhoto: string | null;
+  /** A technician the customer chose to request from their profile (the request is still open to matching technicians). */
+  wantTech: { id: string; name: string } | null;
   // repair request (C-04 → C-06)
   cat: string; model: string; modelOther: boolean; desc: string; location: string; prefDate: string; prefTime: string;
   /** Phone of the customer who started the unsubmitted request draft (drafts are never shared between customers). */
@@ -158,7 +160,7 @@ export type State = {
 export const initialState = (): State => ({
   signupRole: 'customer', phone: '', fullName: '', email: '',
   custIsNew: true, custOnboarded: true, custPhoto: null, custAddress: '', custKyc: 'none', custNin4: '', otp: '',
-  techSubmittedAt: 0, techPhoto: null,
+  techSubmittedAt: 0, techPhoto: null, wantTech: null,
   cat: 'Smartphones', model: '', modelOther: false, desc: '',
   location: '', prefDate: '', prefTime: '',
   status: JobStatus.None, parts: false, partsUsed: false, requestAt: Date.now(), completedAt: 0,
@@ -435,7 +437,7 @@ export const warrantyEnd = (s: State) => {
 };
 export const validUntil = (s: State) => fmtDate(warrantyEnd(s));
 
-export type Job = { id: string; cust: string; dev: string; issue: string; cat: string; area: string; km: number; ago: string; photos: number; when: string; mode: string; media?: string[]; address?: string };
+export type Job = { wants?: string; id: string; cust: string; dev: string; issue: string; cat: string; area: string; km: number; ago: string; photos: number; when: string; mode: string; media?: string[]; address?: string };
 /** "screen repair", "battery replacement" … from the customer's description. */
 export function serviceOf(issue: string, cat: string) {
   const t = issue.toLowerCase();
@@ -482,6 +484,8 @@ export function myQuote(s: State, id: string): TechQuote | null {
   return s.otherQuotes?.[id] ?? null; // optional-chained: older saved sessions predate this field
 }
 export const jobById = (s: State, id: string) => jobs(s).find(j => j.id === id) || jobs(s)[0];
+/** The request with this id, or undefined when it is no longer on the board (taken by another technician, cancelled). */
+export const findJob = (s: State, id: string) => jobs(s).find(j => j.id === id);
 /**
  * Emeka’s completed-job history (56 jobs, newest first). Generated deterministically so the Jobs tab,
  * the Home overview and the Earnings screen all read from the same list and always agree.
@@ -562,13 +566,13 @@ export function techProfile(s: State, name: string) {
   // Technicians from the API (quotes on the customer's request): their public profile and track record.
   const fromApi = !self && s.accounts.find(a => a.apiId && (a.name === name || displayName(a.name) === name));
   if (fromApi) return {
-    title: 'Verified technician', r: fromApi.rating ?? 0, reviews: fromApi.reviews ?? 0, jobs: fromApi.jobs ?? 0, km: NaN, years: fromApi.years ?? 0, resp: '',
+    photo: fromApi.photo ?? null, title: 'Verified technician', r: fromApi.rating ?? 0, reviews: fromApi.reviews ?? 0, jobs: fromApi.jobs ?? 0, km: NaN, years: fromApi.years ?? 0, resp: '',
     areas: fromApi.areas ?? [], skills: fromApi.skills ?? [], certs: ['Government ID verified'], isNew: !fromApi.jobs, registered: true, joined: fromApi.createdAt, done: [] as DoneJob[],
     about: fromApi.bio || `Repairs ${(fromApi.skills ?? []).join(', ').toLowerCase() || 'electronics'}${fromApi.areas?.length ? ` around ${fromApi.areas.join(', ')}` : ''}.`,
   };
   if (self && s.api) {
     const st = techStats(s);
-    return { title: 'Verified technician', r: Math.round(st.rating * 10) / 10, reviews: st.reviews, jobs: st.completed, km: NaN, years: 0, resp: '', areas: s.areas, skills: s.skills,
+    return { photo: s.techPhoto, title: 'Verified technician', r: Math.round(st.rating * 10) / 10, reviews: st.reviews, jobs: st.completed, km: NaN, years: 0, resp: '', areas: s.areas, skills: s.skills,
       certs: ['Government ID verified'], isNew: st.completed === 0, registered: true, joined: s.api.createdAt, done: myDoneJobs(s),
       about: `Repairs ${s.skills.join(', ').toLowerCase() || 'electronics'}${s.areas.length ? ` around ${s.areas.join(', ')}` : ''}.` };
   }

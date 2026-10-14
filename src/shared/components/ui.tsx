@@ -299,12 +299,19 @@ export const Thumb = ({ m, size = 64, h, fill }: { m: Media; size?: number; h?: 
  * Thumbnails for picked photos/videos plus the Figma "+" add tile.
  * Pass `onRemove` to show a visible × delete button on each thumbnail; omit it for read-only galleries.
  */
-export function MediaGrid({ items, max, onAdd, onRemove, addLabel = '+', invalid, camera }: { items: Media[]; max: number; onAdd?: () => void; onRemove?: (i: number) => void; addLabel?: string; invalid?: boolean; camera?: boolean }) {
+/** One picture in a grid: a soft placeholder while it loads, and a clear icon if it can't be loaded. */
+function Thumbnail({ m, label }: { m: Media; label: string }) {
+  const [bad, setBad] = useState(false);
+  if (bad) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 6 }}><Ionicons name="image-outline" size={26} color={C.faint} /><Text style={{ fontSize: 10, color: C.mute, marginTop: 4, textAlign: 'center' }}>Couldn’t load</Text></View>;
+  return <Image source={{ uri: m.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={150} priority="high" accessibilityLabel={label} onError={() => setBad(true)} />;
+}
+
+export function MediaGrid({ items, max, onAdd, onRemove, addLabel = '+', invalid, camera, size }: { size?: number; items: Media[]; max: number; onAdd?: () => void; onRemove?: (i: number) => void; addLabel?: string; invalid?: boolean; camera?: boolean }) {
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
       {items.map((m, i) => (
-        <View key={m.uri + i} style={s.thumb}>
-          <Image source={{ uri: m.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" accessibilityLabel={`${m.type === 'video' ? 'Video' : 'Photo'} ${i + 1}`} />
+        <View key={m.uri + i} style={[s.thumb, size ? { width: size, height: size } : null, { backgroundColor: C.soft }]}>
+          <Thumbnail m={m} label={`${m.type === 'video' ? 'Video' : 'Photo'} ${i + 1}`} />
           {m.type === 'video' ? <View style={s.vid}><Text style={{ color: '#fff', fontSize: 11 }}>▶ video</Text></View> : null}
           {onRemove ? (
             <Pressable onPress={() => onRemove(i)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Delete ${m.type === 'video' ? 'video' : 'photo'} ${i + 1}`} style={s.remove}>
@@ -326,10 +333,12 @@ export function MediaGrid({ items, max, onAdd, onRemove, addLabel = '+', invalid
 /** First + last initial ("Tunde Adewale Balogun" → "TB"); skips a middle name. */
 export const initials = (name: string) => { const w = name.trim().split(/\s+/).filter(Boolean); return ((w[0]?.[0] ?? '') + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase(); };
 export function Avatar({ label, size = 48, verified, uri }: { label: string; size?: number; verified?: boolean; uri?: string | null }) {
-  const photo = uri ? { uri } : PHOTOS[label];
+  // A photo that fails to load falls back to the initials instead of leaving an empty circle.
+  const [failed, setFailed] = useState<string | null>(null);
+  const photo = uri && failed !== uri ? { uri } : uri ? undefined : PHOTOS[label];
   return (
     <View style={{ width: size, height: size }}>
-      {photo ? <Image source={photo} style={{ width: size, height: size, borderRadius: size / 2 }} contentFit="cover" transition={200} accessibilityLabel={label} />
+      {photo ? <Image source={photo} style={{ width: size, height: size, borderRadius: size / 2 }} contentFit="cover" transition={200} priority="high" accessibilityLabel={label} onError={() => uri && setFailed(uri)} />
         : <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#D1E0FF', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontWeight: '700', fontSize: size / 2.7, color: C.primary }}>{initials(label)}</Text></View>}
       {verified ? <View style={{ position: 'absolute', right: -2, bottom: -2, width: size / 3, height: size / 3, borderRadius: size / 6, backgroundColor: C.primary, borderWidth: 2, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: size / 6, fontWeight: '800' }}>✓</Text></View> : null}
     </View>

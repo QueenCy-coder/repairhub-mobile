@@ -46,6 +46,9 @@ The live server answers, but today it has **0 categories, 0 technicians and no a
 | 11 | **Review replies from technicians.** | Not shown in the app. | `POST /reviews/:id/reply`. Lower priority. |
 | 12 | **Payout account saved on the server.** | Rebuilt from the technician's latest withdrawal on a new phone. | Store bank details on the technician profile. |
 | 13 | **Claim evidence and technician claim notes with photos.** | Claims are text only. | Allow media on `POST …/claims`. |
+| 14 | **Technician profile photo.** The app lets technicians set a photo; it is saved on the phone only unless the server can store it. | Without the endpoint the app says "Photo saved on this phone". | **Ready-made fix:** `tools/backend-patches/photo-and-auto-verify.patch` adds `photoUrl` to the technician profile and `POST /technician-profiles/:id/photo` (multipart field `photo`, images only). The public profile and list then carry `photoUrl`, which the app already shows. |
+| 15 | **Automatic document verification (demo switch).** Admin approval is manual today. | Same patch: with `AUTO_VERIFY_SECONDS=5` set on the server, a technician or service center whose documents are still pending 5 seconds after upload is marked verified and notified. The app checks right when it is due. Leave the variable unset in production to keep manual review. | Apply the patch and set the variable. |
+| 16 | **Request a specific technician.** A customer can pick a technician from their profile. | The request is posted to everyone as usual, with "Requested technician: Name" added to the end of the description; that technician sees a "Requested you" badge. | A `preferredTechnicianId` field on repair requests, plus a notification to that technician. |
 
 ## 4. Already in the backend (confirmed, nothing needed)
 

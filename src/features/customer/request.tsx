@@ -3,10 +3,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, View, Text } from 'react-native';
-import { C, Input, Muted, T, CatTile, Btn, Field, MediaGrid, Screen, ChoiceOrType, Opt, Bold, Card, Chip, Row, Thumb, Empty } from '../../shared/components/ui';
+import { C, Input, Muted, T, CatTile, Btn, Field, SuccessMark, Title, MediaGrid, Screen, ChoiceOrType, Opt, Bold, Card, Chip, Row, Thumb, Empty } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
-import { isListedModel, MODELS, JobStatus, shownCategories, categoryAvailable, catInfo, DATES, TIME_WINDOWS } from '../../shared/core/data';
+import { isListedModel, MODELS, JobStatus, shownCategories, categoryAvailable, catInfo, catName, DATES, TIME_WINDOWS } from '../../shared/core/data';
 import { pickMedia, askNotifications } from '../../shared/core/native';
 import { useStore } from '../../shared/core/store';
 import { EditLink, catNoun, requestErrors } from './common';
@@ -166,7 +166,7 @@ export function ReviewRequest() {
     if (!(await run(() => backend.submitRequest(get, set)))) return;
     askNotifications(); // “Get notified when quotes arrive” — the natural moment to ask
     notify('Request sent', `Verified ${catNoun(s.cat)} technicians have been notified.`, '/waiting');
-    if (router.canDismiss()) router.dismissAll(); router.push('/waiting');
+    if (router.canDismiss()) router.dismissAll(); router.push('/request-submitted');
   };
   const images = s.photos.slice(0, 3);
   return (
@@ -179,12 +179,41 @@ export function ReviewRequest() {
         {images.length ? <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>{images.map((m, i) => <Thumb key={i} m={m} />)}</View>
           : <Muted style={{ marginTop: 6, color: C.bad }}>⚠︎ At least one photo is required</Muted>}
       </Card>
+      {s.wantTech ? <Card tone="soft"><Row><View style={{ flex: 1 }}><Muted>Requested technician</Muted><T style={{ fontSize: 14, fontWeight: '600' }}>{s.wantTech.name}</T><Muted style={{ fontSize: 12 }}>Other matching technicians can still quote.</Muted></View><Pressable onPress={() => set({ wantTech: null })} hitSlop={10} accessibilityRole="button" accessibilityLabel="Remove requested technician"><Ionicons name="close-circle" size={22} color={C.mute} /></Pressable></Row></Card> : null}
       <Card tone="soft"><Row><View style={{ flex: 1 }}><Muted>📍 Location</Muted><T style={{ fontSize: 14 }}>{s.location}</T></View><EditLink to="/request-details" what="location" /></Row></Card>
       <Card tone="soft"><Row><View><Muted>📅 Preferred date & time</Muted><T style={{ fontSize: 14 }}>{s.prefDate} · {s.prefTime}</T></View><EditLink to="/request-details" what="date and time" /></Row></Card>
       <Card tone="soft"><Row><View><Muted>Service preference</Muted><T style={{ fontSize: 14 }}>{s.mode === 'home' ? 'Home service' : 'Visit the workshop'}</T></View><EditLink to="/request-details" what="service preference" /></Row></Card>
       <Opt check on={ok} onPress={() => setOk(!ok)} label="Technicians will review your request and send quotation." />
       {tried && !ok ? <Text style={{ color: C.bad, fontSize: 13, marginTop: -2, marginBottom: 8 }}>⚠︎ Please tick the box to confirm</Text> : null}
       <Muted>You only pay after you choose a quote. Your payment is held safely until you confirm the repair.</Muted>
+    </Screen>
+  );
+}
+
+/* ───────── Request submitted ───────── */
+
+export function RequestSubmitted() {
+  const { s, set } = useStore();
+  const info = catInfo(s.cat);
+  const at = new Date(s.requestAt || Date.now());
+  const stamp = `${at.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}, ${at.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase()}`;
+  const wants = s.wantTech?.name;
+  const leave = (to: string) => { set({ wantTech: null }); router.replace(to as never); };
+  return (
+    <Screen title="" back={false} footer={<><Btn title="View my request" onPress={() => leave('/waiting')} /><Btn title="Back to home" variant="sec" onPress={() => leave('/home')} /></>}>
+      <View style={{ alignItems: 'center', marginTop: 8 }}><SuccessMark size={64} /></View>
+      <Title style={{ textAlign: 'center', marginTop: 6 }}>Repair request has been submitted!</Title>
+      <Muted style={{ textAlign: 'center', fontSize: 15, lineHeight: 22 }}>{wants ? `Your request has been sent to ${wants} and other technicians who match your repair needs.` : 'Your request has been sent to technicians who match your repair needs.'} We’ll notify you when technicians respond with their quotations.</Muted>
+      <Card tone="blue" style={{ marginTop: 18 }}>
+        <CatTile cat={s.cat} model={s.model} size={64} bg="#fff" />
+        <T style={{ fontSize: 17, fontWeight: '800', marginTop: 12 }}>{info.short} repair</T>
+        <Muted>{s.model ? `${s.model} · ` : ''}{catName(s.cat)}</Muted>
+        <Row style={{ marginTop: 14, alignItems: 'flex-start' }}>
+          <View style={{ flex: 1 }}><Muted style={{ fontSize: 13 }}>Submitted</Muted><T style={{ fontSize: 14, fontWeight: '700' }}>{stamp}</T></View>
+          <View style={{ flex: 1 }}><Muted style={{ fontSize: 13 }}>Request ID</Muted><T style={{ fontSize: 14, fontWeight: '700' }}>{shortRef(s.rid)}</T></View>
+        </Row>
+        {wants ? <View style={{ marginTop: 12 }}><Muted style={{ fontSize: 13 }}>Requested technician</Muted><T style={{ fontSize: 14, fontWeight: '700' }}>{wants}</T></View> : null}
+      </Card>
     </Screen>
   );
 }

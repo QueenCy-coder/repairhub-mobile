@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { Pressable, Text, View, Alert } from 'react-native';
 import { InfoTag, MiniSteps, StatusPill, Banner, FadeIn, Btn, Btns, C, Card, Chip, Chips, Empty, Input, Link, Muted, Row, Screen, T, Title, Avatar, Bold, H4, KV, MediaGrid, CatTile, Field, NumberChoice } from '../../shared/components/ui';
-import { techStats, escrowTotal, isMine, JobStatus, offeredCategories, catName, availableJobs, jobTitle, typicalPrice, todayLabel, custShort, myQuote, N, net, plural, jobById, COMMISSION, grouped } from '../../shared/core/data';
+import { displayName, findJob, techStats, escrowTotal, isMine, JobStatus, offeredCategories, catName, availableJobs, jobTitle, typicalPrice, todayLabel, custShort, myQuote, N, net, plural, jobById, COMMISSION, grouped, type Job } from '../../shared/core/data';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
 import { kmLabel } from '../../shared/core/geo';
@@ -76,6 +76,7 @@ export function Jobs() {
                     <Row style={{ justifyContent: 'flex-start', gap: 6, flexWrap: 'wrap' }}>
                       <T style={{ fontSize: 15, fontWeight: '700', flexShrink: 1 }} numberOfLines={2}>{jobTitle(j)}</T>
                       {!mine ? <View style={{ backgroundColor: C.primary, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}><Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>New</Text></View> : null}
+                      {j.wants && j.wants.trim().toLowerCase() === displayName(s.techName).trim().toLowerCase() ? <View style={{ backgroundColor: '#12B76A', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}><Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Requested you</Text></View> : null}
                     </Row>
                     <T style={{ fontSize: 13, color: C.text, fontWeight: '600' }}>{j.cust}</T>
                     <InfoTag icon="location-outline" label={`${Number.isFinite(j.km) ? `${kmLabel(j.km)} · ` : ''}${j.area} • ${j.mode}`} />
@@ -147,7 +148,8 @@ export function Jobs() {
 
 export function JobDetails() {
   const { s } = useStore();
-  const j = jobById(s, s.viewJob);
+  const j = findJob(s, s.viewJob);
+  if (!j) return <Screen title="Job details"><Empty title="This request is no longer available" sub="It may have been booked with another technician or cancelled." action="Back to jobs" onPress={() => router.replace('/jobs')} /></Screen>;
   const media = j.id === 'RH-0841' ? s.photos : (j.media ?? []).map(uri => ({ uri, type: 'image' as const }));
   const booked = j.id === 'RH-0841' && !!s.jobId;
   return (
@@ -157,7 +159,7 @@ export function JobDetails() {
       <Row><Row style={{ justifyContent: 'flex-start', gap: 10 }}><Avatar label={j.cust} size={40} uri={j.id === 'RH-0841' ? (s.owner?.photo ?? s.custPhoto) : undefined} /><View><Bold style={{ fontSize: 14 }}>{j.cust}</Bold><Muted style={{ fontSize: 12 }}>{refOf(j.id, s.rid)}</Muted></View></Row><Chip tone="blue" label={`${Number.isFinite(j.km) ? `${kmLabel(j.km)} · ` : ''}${j.area}`} /></Row>
       <H4>{j.dev}</H4>
       <T style={{ fontSize: 14, color: C.text, marginTop: -4 }}>{j.issue}</T>
-      <View style={{ marginTop: 12 }}>{media.length ? <MediaGrid items={media} max={media.length} />
+      <View style={{ marginTop: 12 }}>{media.length ? <MediaGrid items={media} max={media.length} size={150} />
         : <Muted>The customer didn’t attach photos.</Muted>}</View>
       <Card style={{ marginTop: 14 }}><KV k="Category" v={catName(j.cat)} /><KV k="Typical price" v={N(typicalPrice(j.cat, j.issue))} /><KV k="Area" v={j.area} /><KV k="Exact address" v={booked ? (s.location || '—') : 'Shared after booking'} /><KV k="Needed" v={j.when} /><KV k="Service" v={j.mode} /><KV k="Posted" v={j.ago} />{myQuote(s, j.id) ? <KV k="Your quote" v={N(myQuote(s, j.id)!.labour + myQuote(s, j.id)!.parts)} /> : null}</Card>
       {booked ? <Banner tone={isMine(s) ? 'ok' : 'warn'} icon={isMine(s) ? '✓' : 'ℹ︎'}>{isMine(s) ? 'The customer booked you for this job.' : 'The customer chose another technician.'}</Banner> : null}
@@ -167,10 +169,19 @@ export function JobDetails() {
 
 /* ───────── T-06 Send quote (one quote per request) ───────── */
 
+/** Quote screen for the request being viewed; if it is gone (booked elsewhere, cancelled) say so rather than quoting another one. */
 export function SendQuote() {
+  const { s } = useStore();
+  const j = findJob(s, s.viewJob);
+  if (!j) return <Screen title="Send quote"><Empty title="This request is no longer available" sub="It may have been booked with another technician or cancelled." action="Back to jobs" onPress={() => router.replace('/jobs')} /></Screen>;
+  return <SendQuoteFor j={j} />;
+}
+
+function SendQuoteFor({ j }: { j: Job }) {
   const { s, set, get, toast, online, run, busy } = useStore();
-  const j = jobById(s, s.viewJob);
   const existing = myQuote(s, j.id);
+  /** Why the last attempt failed, shown on the screen (a toast alone is easy to miss behind the keyboard). */
+  const [sendErr, setSendErr] = React.useState<string | null>(null);
   const isCenter = s.api?.role === 'service_center';
   const team = s.centerTeam ?? [];
   // Each request gets its own draft, pre-filled only from that request's existing quote.
@@ -194,7 +205,10 @@ export function SendQuote() {
     if (isCenter && !techId) { setTried(true); toast('Pick which technician will do the work — add them to your team first'); return; }
     if (Object.values(err).some(Boolean)) { setTried(true); toast('Please complete the fields marked in red'); return; }
     const q = { labour: num(labour), parts: num(parts), days: days!, warr: warr!, note: note.trim(), ...(isCenter ? { technicianId: techId } : {}) };
-    if (await run(() => backend.sendQuote(get, set, j.id, q), 'Quote sent · the customer has been notified')) router.back();
+    setSendErr(null);
+    let failMsg: string | null = null;
+    const ok = await run(async () => { try { await backend.sendQuote(get, set, j.id, q); } catch (e) { failMsg = e instanceof Error ? e.message : null; throw e; } }, 'Quote sent · the customer has been notified');
+    if (ok) router.back(); else setSendErr(failMsg ?? 'The quote could not be sent. Check your connection and try again.');
   };
   const withdraw = () => Alert.alert('Withdraw your quote?', 'The customer will no longer see it, and you won’t be able to send another quote on this request.', [{ text: 'Keep', style: 'cancel' }, { text: 'Withdraw', style: 'destructive', onPress: async () => {
     if (await run(() => backend.withdrawQuote(get, set, j.id), 'Quote withdrawn')) router.back();
@@ -214,6 +228,7 @@ export function SendQuote() {
   if (closed) return <Screen title="Send quote"><Empty title={closed} sub="You can’t send another quote on this request." action="Back to jobs" onPress={() => router.replace('/jobs')} /></Screen>;
   return (
     <Screen title="Send quote" footer={<Btn title={busy ? 'Sending…' : `Send quote${total ? ` · ${N(total)}` : ''}`} disabled={busy} onPress={send} />}>
+      {sendErr ? <Banner tone="bad" icon="!">{sendErr}</Banner> : null}
       <Card tone="soft"><Row style={{ justifyContent: 'flex-start', gap: 12 }}><CatTile model={j.dev} cat={j.cat} bg="#fff" /><View style={{ flex: 1 }}><Bold style={{ fontSize: 14 }}>{refOf(j.id)} · {j.dev}</Bold><Muted style={{ fontSize: 12 }}>{Number.isFinite(j.km) ? `${kmLabel(j.km)} · ` : ''}{j.area} · {j.mode}</Muted><T style={{ fontSize: 12, color: C.mute, lineHeight: 16 }} numberOfLines={2}>{j.issue}</T></View></Row></Card>
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={{ flex: 1 }}><Field label="Labour (₦)" required error={tried && err.labour}><Input invalid={tried && !!err.labour} value={grouped(labour)} onChangeText={t => setLabour(t.replace(/\D/g, '').replace(/^0+/, '').slice(0, 7))} keyboardType="number-pad" placeholder="e.g. 6000" /></Field></View>

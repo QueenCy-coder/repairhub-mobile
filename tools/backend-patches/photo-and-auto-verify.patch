@@ -1,0 +1,113 @@
+diff --git a/controller/serviceCenterController.js b/controller/serviceCenterController.js
+index 783418c..ff64ab0 100644
+--- a/controller/serviceCenterController.js
++++ b/controller/serviceCenterController.js
+@@ -8,6 +8,7 @@ import { toPoint, withinRadius } from '../utils/geo.js';
+ import { pageMeta, parsePagination } from '../utils/paginate.js';
+ import { badRequest, conflict, forbidden, notFound } from '../utils/ApiError.js';
+ import { notifyUser } from '../services/notificationService.js';
++import { scheduleAutoVerify } from '../services/autoVerify.js';
+ import { requireCenterProfile } from '../services/access.js';
+ 
+ const PUBLIC_HIDE = '-verificationDocs -verificationFeedback -ratingSum';
+@@ -57,6 +58,7 @@ export const uploadCenterDocs = asyncHandler(async (req, res) => {
+   c.verificationDocs.push(...(await uploadManyToCloudinary(req.files, 'center-verification')));
+   if (c.verificationStatus === 'rejected') { c.verificationStatus = 'pending'; c.verificationFeedback = null; }
+   await c.save();
++  scheduleAutoVerify(c.constructor, c._id, 'Your service center has been verified!');
+   return ok(res, c, 'Documents uploaded');
+ });
+ 
+diff --git a/controller/technicianProfileController.js b/controller/technicianProfileController.js
+index 36e3cce..2c32985 100644
+--- a/controller/technicianProfileController.js
++++ b/controller/technicianProfileController.js
+@@ -7,6 +7,7 @@ import { toPoint, withinRadius } from '../utils/geo.js';
+ import { pageMeta, parsePagination } from '../utils/paginate.js';
+ import { badRequest, forbidden, notFound } from '../utils/ApiError.js';
+ import { notifyUser } from '../services/notificationService.js';
++import { scheduleAutoVerify } from '../services/autoVerify.js';
+ 
+ const PUBLIC_HIDE = '-verificationDocs -verificationFeedback -availabilityCalendar -ratingSum';
+ 
+@@ -71,9 +72,21 @@ export const uploadVerificationDocs = asyncHandler(async (req, res) => {
+     profile.verificationFeedback = null;
+   }
+   await profile.save();
++  scheduleAutoVerify(TechnicianProfile, profile._id, 'Your technician profile has been verified!');
+   return ok(res, profile, 'Verification documents uploaded');
+ });
+ 
++// POST /api/technician-profiles/:id/photo   (technician, own profile; multipart field "photo")
++export const uploadProfilePhoto = asyncHandler(async (req, res) => {
++  const profile = await loadOwned(req);
++  if (!req.file) throw badRequest('Attach a photo (field "photo")');
++  if (!req.file.mimetype.startsWith('image/')) throw badRequest('The profile photo must be an image');
++  const [url] = await uploadManyToCloudinary([req.file], 'technician-photos');
++  profile.photoUrl = url;
++  await profile.save();
++  return ok(res, profile, 'Profile photo updated');
++});
++
+ // GET /api/technician-profiles/pending  (admin)
+ export const listPendingVerifications = asyncHandler(async (req, res) => {
+   const pg = parsePagination(req.query);
+diff --git a/model/technicianProfileModel.js b/model/technicianProfileModel.js
+index 3f56fa8..ca83565 100644
+--- a/model/technicianProfileModel.js
++++ b/model/technicianProfileModel.js
+@@ -31,6 +31,7 @@ const technicianProfileSchema = new mongoose.Schema(
+       enum: ['pending', 'verified', 'rejected'],
+       default: 'pending',
+     },
++    photoUrl: { type: String, default: null }, // profile photo (Cloudinary URL)
+     verificationDocs: [{ type: String }], // Cloudinary URLs
+     verificationFeedback: { type: String, default: null },
+     verifiedAt: { type: Date },
+diff --git a/routes/technicianProfileRoutes.js b/routes/technicianProfileRoutes.js
+index f0d327e..a983d66 100644
+--- a/routes/technicianProfileRoutes.js
++++ b/routes/technicianProfileRoutes.js
+@@ -1,7 +1,7 @@
+ import { Router } from 'express';
+ import {
+   listTechnicianProfiles, getMyTechnicianProfile, getTechnicianProfileById, updateTechnicianProfile,
+-  uploadVerificationDocs, listPendingVerifications, verifyTechnician,
++  uploadVerificationDocs, uploadProfilePhoto, listPendingVerifications, verifyTechnician,
+ } from '../controller/technicianProfileController.js';
+ import { protect, authorize } from '../middleware/auth.js';
+ import { upload } from '../middleware/upload.js';
+@@ -19,5 +19,6 @@ router.get('/:id', getTechnicianProfileById);
+ router.patch('/:id', protect, authorize('technician'), validate(s.technicianProfileUpdate), updateTechnicianProfile);
+ router.patch('/:id/verify', protect, authorize('admin'), validate(s.verifyDecision), verifyTechnician);
+ router.post('/:id/verification-docs', protect, authorize('technician'), upload.array('docs', 5), uploadVerificationDocs);
++router.post('/:id/photo', protect, authorize('technician'), upload.single('photo'), uploadProfilePhoto);
+ 
+ export default router;
+diff --git a/services/autoVerify.js b/services/autoVerify.js
+new file mode 100644
+index 0000000..6985b64
+--- /dev/null
++++ b/services/autoVerify.js
+@@ -0,0 +1,21 @@
++import { notifyUser } from './notificationService.js';
++
++// Optional demo switch: with AUTO_VERIFY_SECONDS=5 a technician or service center whose documents are still
++// pending five seconds after uploading is marked verified, as if an admin had approved them. Off by default.
++export const scheduleAutoVerify = (Model, id, message) => {
++  const secs = Number(process.env.AUTO_VERIFY_SECONDS);
++  if (!(secs > 0)) return;
++  setTimeout(async () => {
++    try {
++      const doc = await Model.findById(id);
++      if (!doc || doc.verificationStatus !== 'pending' || !doc.verificationDocs?.length) return;
++      doc.verificationStatus = 'verified';
++      doc.verificationFeedback = null;
++      doc.verifiedAt = new Date();
++      await doc.save();
++      await notifyUser(doc.userId, 'verification', message, doc._id);
++    } catch (err) {
++      console.error('auto-verify failed', err);
++    }
++  }, secs * 1000).unref?.();
++};

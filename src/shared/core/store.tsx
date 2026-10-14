@@ -156,8 +156,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!ready || !apiUser) return;
     let alive = true, lastFull = 0, lastNote = '';
     const full = async () => { lastFull = Date.now(); await refreshNow(); lastNote = backend.lastSeenNote(); };
+    // Right after documents are submitted, check every 3 s for a few minutes so the verification result shows up promptly.
+    let lastTick = 0;
     const tick = async () => {
       if (!alive || !onlineRef.current) return;
+      const c = sRef.current, recent = (t?: number) => !!t && Date.now() - t < 3 * 60000;
+      const waiting = (c.techVerif === 'pending' && recent(c.techSubmittedAt)) || (c.centerVerif === 'pending' && recent(c.centerSubmittedAt));
+      if (Date.now() - lastTick < (waiting ? 3000 : POLL_MS) - 500) return;
+      lastTick = Date.now();
       if (Date.now() - lastFull > FULL_MS) return full();
       try {
         const top = await backend.latestNote();
@@ -166,7 +172,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       } catch { setLive(false); }
     };
     full();
-    const id = setInterval(tick, POLL_MS);
+    const id = setInterval(tick, 3000);
     // Coming back to the app: catch up straight away.
     const sub = AppState.addEventListener('change', st => { if (st === 'active' && Date.now() - lastFull > 30000) full(); });
     return () => { alive = false; clearInterval(id); sub.remove(); };

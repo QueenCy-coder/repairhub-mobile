@@ -2,12 +2,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable } from 'react-native';
-import { Banner, Btn, Card, Field, Input, Link, Muted, Screen, T, Title } from '../../shared/components/ui';
+import { Banner, Btn, Card, Field, Input, Link, Muted, Row, Screen, T, Title } from '../../shared/components/ui';
 import { ApiError } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
 import { passwordError } from '../../shared/core/data';
 import { useStore } from '../../shared/core/store';
 import { PasswordInput } from './fields';
+import { pushCode } from '../../shared/core/native';
 import { enterApp } from './session';
 import { emailError } from './signup';
 
@@ -66,6 +67,9 @@ export function ForgotPassword() {
   const [step, setStep] = useState<'email' | 'reset'>('email');
   const [email, setEmail] = useState('');
   const [token, setToken] = useState('');
+  /** null = not tried; false = the notification couldn't be delivered, so the code may be revealed here. */
+  const [pushed, setPushed] = useState<boolean | null>(null);
+  const [reveal, setReveal] = useState(false);
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
   const [tried, setTried] = useState(false);
@@ -76,7 +80,7 @@ export function ForgotPassword() {
     // When an email service is added the token won't come back here — the message below still makes sense.
     await run(async () => {
       const d = await backend.forgotPassword(email);
-      if (d.resetToken) { setToken(d.resetToken); setStep('reset'); }
+      if (d.resetToken) { setToken(d.resetToken); setReveal(false); setPushed(null); setTried(false); setStep('reset'); pushCode(d.resetToken, email.trim().toLowerCase(), 'email', 'reset').then(setPushed); }
     }, 'If that email is registered, a reset code was issued');
   };
   const save = async () => {
@@ -94,11 +98,10 @@ export function ForgotPassword() {
     </Screen>
   ) : (
     <Screen title="Set a new password" footer={<><Btn title={busy ? 'Saving…' : 'Set new password'} disabled={busy} onPress={save} /><Btn title="Back to log in" variant="sec" onPress={() => router.back()} /></>}>
-      <Card tone="hi" style={{ paddingVertical: 10 }}>
-        <Muted style={{ fontSize: 12 }}>Your reset code (expires in 1 hour)</Muted>
-        <T style={{ fontSize: 17, fontWeight: '700', letterSpacing: 1, marginTop: 2 }}>{token}</T>
-      </Card>
-      <Field label="Reset code" required error={tried && !token.trim() ? 'Enter the reset code' : null}><Input value={token} invalid={tried && !token.trim()} onChangeText={setToken} placeholder="Paste the code from above" autoCapitalize="none" autoCorrect={false} /></Field>
+      <Muted style={{ fontSize: 14, lineHeight: 21, marginBottom: 12 }}>{pushed === false ? 'Notifications are off, so your reset code isn’t shown as a notification.' : 'We sent a reset code to your email as a notification. It has been filled in below. It expires in 1 hour.'}</Muted>
+      {pushed === false && !reveal ? <Row style={{ justifyContent: 'center', marginBottom: 10 }}><Link onPress={() => setReveal(true)}>Show my code</Link></Row> : null}
+      {pushed === false && reveal ? <Card tone="hi" style={{ paddingVertical: 10 }}><Muted style={{ fontSize: 12 }}>Your reset code (expires in 1 hour)</Muted><T style={{ fontSize: 15, fontWeight: '700', letterSpacing: 1, marginTop: 2 }}>{token}</T></Card> : null}
+      <Field label="Reset code" required error={tried && !token.trim() ? 'Enter the reset code' : null}><Input value={token} invalid={tried && !token.trim()} onChangeText={setToken} placeholder="Enter the reset code" secureTextEntry={!reveal} autoCapitalize="none" autoCorrect={false} /></Field>
       <Field label="New password" required error={tried && pwErr}><PasswordInput value={pw} onChange={setPw} invalid={tried && !!pwErr} placeholder="At least 8 characters" newPassword /></Field>
       <Field label="Confirm new password" required error={tried && pw2Err}><PasswordInput value={pw2} onChange={setPw2} invalid={tried && !!pw2Err} placeholder="Re-enter your password" newPassword /></Field>
     </Screen>
