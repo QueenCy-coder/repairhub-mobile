@@ -22,6 +22,9 @@ export function VerifyAccount() {
   const [wrong, setWrong] = useState(false);
   const [sent, setSent] = useState(false);
   const [devCode, setDevCode] = useState('');
+  /** null = not tried yet; false = the notification couldn't be delivered, so the code may be revealed here. */
+  const [pushed, setPushed] = useState<boolean | null>(null);
+  const [reveal, setReveal] = useState(false);
   const input = useRef<TextInput>(null);
 
   /** Ask the API for a code on the chosen channel. Without an email/SMS provider the code comes back here. */
@@ -31,7 +34,8 @@ export function VerifyAccount() {
       const d = await backend.sendVerificationCode(email, ch);
       if (d.verified) { set({ authMode: 'login' }); router.replace('/login'); return; }
       setDevCode(d.code ?? '');
-      if (d.code) pushCode(d.code).then(ok => { if (!ok) toast('Notifications are off, so your code is shown on this screen.'); });
+      setPushed(null); setReveal(false);
+      if (d.code) pushCode(d.code).then(ok => { setPushed(ok); if (!ok) toast('Notifications are off. Tap “Show my code” to see it.'); });
       setSent(true); setWrong(false); setCode('');
       setDestination(ch === 'phone' ? masked(String(d.destination ?? phone)) : String(d.destination ?? email));
     });
@@ -101,12 +105,12 @@ export function VerifyAccount() {
       </Pressable>
       {wrong ? <Muted style={{ color: C.bad, fontSize: 13, marginTop: 8 }}>⚠︎ That code didn’t match. Check all 6 digits and try again.</Muted> : null}
 
-      {devCode ? (
+      {devCode && pushed === false ? (reveal ? (
         <Card tone="hi" style={{ paddingVertical: 10, marginTop: 14 }}>
           <Muted style={{ fontSize: 12 }}>Your code (expires in 10 minutes)</Muted>
           <T style={{ fontSize: 20, fontWeight: '700', letterSpacing: 3, marginTop: 2 }}>{devCode}</T>
         </Card>
-      ) : null}
+      ) : <Row style={{ marginTop: 14, justifyContent: 'center' }}><Link onPress={() => setReveal(true)}>Show my code</Link></Row>) : null}
 
       <Row style={{ marginTop: 16, justifyContent: 'center', gap: 20 }}>
         <Link onPress={() => send(channel)}>{busy ? 'Sending…' : 'Resend code'}</Link>
@@ -114,7 +118,7 @@ export function VerifyAccount() {
       </Row>
 
       <Muted style={{ fontSize: 12, marginTop: 16, textAlign: 'center' }}>
-        No email or SMS service is connected yet, so the code arrives as a notification on this phone and shows here too.
+        We sent your code as a notification on this phone. Open it and type the 6 digits here.
       </Muted>
     </Screen>
   );

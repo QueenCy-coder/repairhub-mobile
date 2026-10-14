@@ -45,7 +45,13 @@
           "cameraPermission": "RepairHub uses the camera to photograph the item that needs repairing."
         }
       ],
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#3563E9"
+        }
+      ],
       [
         "expo-location",
         {
