@@ -1,0 +1,20 @@
+diff --git a/controller/repairJobController.js b/controller/repairJobController.js
+index b24d754..4135f9d 100644
+--- a/controller/repairJobController.js
++++ b/controller/repairJobController.js
+@@ -63,6 +63,15 @@ export const updateJobStatus = asyncHandler(async (req, res) => {
+         throw forbidden('Only the assigned technician or their service center can update this job');
+     }
+ 
++    // A same-status update that carries a note is a progress note ("Diagnosis completed", "Repair in progress"):
++    // it is recorded and the customer is told, without changing the status.
++    if (status === job.status && note && !['completed', 'cancelled', 'disputed'].includes(status)) {
++        job.statusHistory.push({ status, note, by: req.user._id });
++        await job.save();
++        await notifyUser(job.customerUserId, 'status_update', 'Repair update from your technician', job._id);
++        return ok(res, job, 'Progress note added');
++    }
++
+     if (!(TRANSITIONS[job.status] || []).includes(status)) {
+         throw conflict(`Cannot move a job from "${job.status}" to "${status}"`);
+     }

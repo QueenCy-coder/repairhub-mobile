@@ -294,7 +294,12 @@ async function refreshCustomer(get: Get, set: Set) {
   // API leaves the request itself "in progress".)
   const finished = (r: any) => { const j = jobOf(r._id); return r.status === 'cancelled' || j?.status === 'cancelled' || j?.payment?.status === 'refunded' || (r.status === 'completed' && ['released', 'cash_settled'].includes(j?.payment?.status)); };
   // The live request: the one on screen, or (fresh sign-in) the newest one still in progress.
-  const live = (s.rid ? reqs.find(r => r._id === s.rid) : null) ?? (!s.rid && s.status === JobStatus.None ? reqs.find(r => !finished(r)) : null);
+  const shown = s.rid ? reqs.find(r => r._id === s.rid) : null, open = reqs.find(r => !finished(r));
+  // A finished request stays on screen while its review is open; once reviewed (or after a while) a newer open
+  // request (made on another phone, say) takes over.
+  const stale = !!shown && finished(shown) && !!open && open._id !== shown._id && (s.reviewed || Date.now() - ts(shown.updatedAt) > 30 * 60000);
+  if (stale) set({ jobId: null, status: JobStatus.None, sel: null, quoted: false, qBy: null, reviewed: false, rating: 0, tags: [], reviewText: '' });
+  const live = (shown && !stale ? shown : null) ?? ((!s.rid || stale) && (s.status === JobStatus.None || stale) ? open : null);
 
   // Earlier requests become the history list (finished or cancelled).
   const past = reqs.filter(r => r._id !== live?._id && finished(r));
@@ -321,7 +326,7 @@ async function refreshCustomer(get: Get, set: Set) {
   }
   const u = prefsOf(live);
   const base: Partial<State> = {
-    rid: live._id, cat: catName(s, live.serviceCategoryId), model: live.brandModel || live.itemType, desc: u.desc, location: live.address ?? '',
+    rid: live._id, ...(s.rid !== live._id ? { payRef: null } : {}), cat: catName(s, live.serviceCategoryId), model: live.brandModel || live.itemType, desc: u.desc, location: live.address ?? '',
     prefDate: u.prefDate, prefTime: u.prefTime, mode: u.mode, requestAt: ts(live.createdAt), owner: { name: s.fullName, phone: me, photo: s.custPhoto },
     photos: (live.mediaUrls ?? []).map((uri: string) => ({ uri, type: /\.(mp4|mov)$/i.test(uri) ? 'video' : 'image' } as Media)), cancelled: live.status === 'cancelled',
   };
@@ -610,6 +615,7 @@ export async function submitRequest(get: Get, set: Set) {
   if (at) form.append('location', JSON.stringify(at));
   await appendMedia(form, 'media', s.photos);
   const r = await api<any>('POST', '/repair-requests', { form, timeoutMs: 120000 });
+  set({ payRef: null });
   set({ rid: r._id, jobId: null, apptId: null, warrantyId: null, apiQuotes: [], status: JobStatus.Requested, requestAt: ts(r.createdAt), cancelled: false, sel: null, payState: undefined });
   return r;
 }
@@ -780,7 +786,9 @@ export async function updateJob(get: Get, set: Set, u: { stage?: number; parts?:
       await api('PATCH', `/repair-jobs/${id}/status`, { body: { status, note } });
     }
   } else if (u.stage) {
-    // Same API status (e.g. "Diagnosis completed" during in_progress): keep it on this device's log only.
+    // Same API status (e.g. "Diagnosis completed" during in_progress): sent as a progress note so the customer sees it.
+    // A server without progress notes answers 409; then it stays on this device's log only.
+    await api('PATCH', `/repair-jobs/${id}/status`, { body: { status: cur, note } }).catch(e => { if (!(e instanceof ApiError && e.status === 409)) throw e; });
     set(p => ({ techStage: Math.max(p.techStage, u.stage!), jobLog: [...p.jobLog, { label: u.label, at: nowLabel(), stage: u.stage, note: u.note }] }));
     return;
   }
