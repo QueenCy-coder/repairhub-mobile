@@ -134,8 +134,13 @@ export async function register(p: { role: Role; fullName: string; email: string;
 }
 
 /** Send a 6-digit code to the account's email address or phone number (the person chooses which). */
-export async function sendVerificationCode(email: string, channel: 'email' | 'phone') {
-  return api<{ sent: boolean; verified?: boolean; channel: 'email' | 'phone'; destination?: string; code?: string; expiresInMinutes?: number }>('POST', '/users/verify/send', { body: { email: email.trim().toLowerCase(), channel } });
+type VerifySent = { sent: boolean; verified?: boolean; channel: 'email' | 'phone'; destination?: string; code?: string; expiresInMinutes?: number };
+export async function sendVerificationCode(email: string, channel: 'email' | 'phone'): Promise<VerifySent> {
+  // A server without the verification endpoints (404) has already activated the account: go straight to log-in.
+  return api<VerifySent>('POST', '/users/verify/send', { body: { email: email.trim().toLowerCase(), channel } }).catch(e => {
+    if (e instanceof ApiError && e.status === 404) return { sent: false, verified: true, channel };
+    throw e;
+  });
 }
 
 /** Redeem the code and activate the account; the person then logs in. */

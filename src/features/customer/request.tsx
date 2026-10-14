@@ -94,12 +94,13 @@ export function NewRequest() {
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {LIVE_CATEGORIES.map(c => {
             const on = s.cat === c;
+            const soon = Object.keys(s.catIds ?? {}).length > 0 && !s.catIds[c]; // not offered by the server yet
             return (
-              <Pressable key={c} onPress={() => c !== s.cat && set({ cat: c, ...(isListedModel(c, s.model) ? {} : { model: '', modelOther: false }) })}
+              <Pressable key={c} disabled={soon} onPress={() => c !== s.cat && set({ cat: c, ...(isListedModel(c, s.model) ? {} : { model: '', modelOther: false }) })}
                 accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={c}
-                style={({ pressed }) => ({ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 14, borderWidth: on ? 2 : 1, borderColor: on ? C.primary : C.line, backgroundColor: on ? C.primarySoft : '#fff', transform: [{ scale: pressed ? 0.96 : 1 }] })}>
+                style={({ pressed }) => ({ opacity: soon ? 0.4 : 1, flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 14, borderWidth: on ? 2 : 1, borderColor: on ? C.primary : C.line, backgroundColor: on ? C.primarySoft : '#fff', transform: [{ scale: pressed ? 0.96 : 1 }] })}>
                 <CatTile cat={c} size={42} bg={on ? '#fff' : C.primarySoft} />
-                <Text style={{ marginTop: 6, fontSize: 11, fontWeight: on ? '700' : '500', color: on ? C.primary : C.text }} numberOfLines={1}>{DEVICE_SHORT[c] ?? c}</Text>
+                <Text style={{ marginTop: 6, fontSize: 11, fontWeight: on ? '700' : '500', color: on ? C.primary : C.text }} numberOfLines={1}>{soon ? 'Soon' : DEVICE_SHORT[c] ?? c}</Text>
                 {on ? <View style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: 9, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' }}><Ionicons name="checkmark" size={10} color="#fff" /></View> : null}
               </Pressable>
             );

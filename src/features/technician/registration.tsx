@@ -44,7 +44,7 @@ export function TechRegister() {
       <Field label="Phone"><Input value={`+234 ${s.techPhone}   ✓ verified`} editable={false} /></Field>
       <H4>2 · Services & skills</H4>
       <Card><Row><Bold>Electronics</Bold><Chip tone="ok" label="Live in Lagos" /></Row>
-        <View style={{ marginTop: 8 }}>{LIVE_CATEGORIES.map(k => <Opt key={k} check label={k} on={s.skills.includes(k)} onPress={() => set(p => ({ skills: p.skills.includes(k) ? p.skills.filter(x => x !== k) : [...p.skills, k] }))} />)}</View>
+        <View style={{ marginTop: 8 }}>{LIVE_CATEGORIES.map(k => { const soon = Object.keys(s.catIds ?? {}).length > 0 && !s.catIds[k]; return <Opt key={k} check label={soon ? `${k} · coming soon` : k} disabled={soon} on={!soon && s.skills.includes(k)} onPress={() => set(p => ({ skills: p.skills.includes(k) ? p.skills.filter(x => x !== k) : [...p.skills, k] }))} />; })}</View>
         <Muted>Home appliances, home services and furniture open later. You can add them when they launch.</Muted>
       </Card>
       <H4>3 · Service area</H4>
