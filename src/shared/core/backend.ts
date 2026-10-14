@@ -152,6 +152,7 @@ export async function login(p: { role: Role; email: string; password: string }, 
   const d = await api<{ user: any; token: string }>('POST', '/users/login', { body: { email: p.email.trim().toLowerCase(), password: p.password } }).catch(e => {
     throw e instanceof ApiError && e.status === 401 ? new ApiError('Incorrect email or password. Try again.', 401) : e;
   });
+  if (d.user.role === 'service_center') throw new ApiError('Service center accounts aren’t available in the mobile app.', 403);
   if (d.user.role !== p.role) {
     const what = d.user.role === 'technician' ? 'a technician' : d.user.role === 'customer' ? 'a customer' : `a ${String(d.user.role).replace('_', ' ')}`;
     throw new ApiError(`This email belongs to ${what} account. Go back and choose “${d.user.role === 'technician' ? 'I’m a technician' : 'I need a repair'}”.`, 409);

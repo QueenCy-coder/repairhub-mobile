@@ -60,7 +60,6 @@ export function RolePicker() {
       </View>
       <FadeIn delay={80}><RoleCard title="I need a repair" sub="Find trusted technicians for your devices and home repairs" art={IMG.roleCustomerArt} icon="person-outline" iconColor={C.primary} bg="#F0F6FE" onPress={() => pick('customer')} /></FadeIn>
       <FadeIn delay={180}><RoleCard title="I’m a technician" sub="Find repair jobs, send quotes and manage your services." art={IMG.roleTechArt} icon="build-outline" iconColor="#F79009" bg="#FEFBED" onPress={() => pick('technician')} /></FadeIn>
-      <FadeIn delay={280}><RoleCard title="I run a service center" sub="Send quotes as a team, manage technicians and track every job." art={IMG.roleTechArt} icon="storefront-outline" iconColor="#0E8365" bg="#EBF7F2" onPress={() => pick('service_center')} /></FadeIn>
       <View style={{ marginTop: 28, marginBottom: 12 }}>
       <Text style={{ textAlign: 'center', fontSize: 15, color: '#3D4350', paddingVertical: 4 }}>
         {mode === 'login' ? 'Don’t have an account? ' : 'Already have an account? '}
