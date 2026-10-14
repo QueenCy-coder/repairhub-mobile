@@ -197,7 +197,7 @@ export function RequestSubmitted() {
   const info = catInfo(s.cat);
   const at = new Date(s.requestAt || Date.now());
   const stamp = `${at.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}, ${at.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase()}`;
-  const wants = s.wantTech?.name;
+  const wants = s.wantTech?.name, mine = s.photos.filter(m => m.type === 'image').slice(0, 3);
   const leave = (to: string) => { set({ wantTech: null }); router.replace(to as never); };
   return (
     <Screen title="" back={false} footer={<><Btn title="View my request" onPress={() => leave('/waiting')} /><Btn title="Back to home" variant="sec" onPress={() => leave('/home')} /></>}>
@@ -205,7 +205,7 @@ export function RequestSubmitted() {
       <Title style={{ textAlign: 'center', marginTop: 6 }}>Repair request has been submitted!</Title>
       <Muted style={{ textAlign: 'center', fontSize: 15, lineHeight: 22 }}>{wants ? `Your request has been sent to ${wants} and other technicians who match your repair needs.` : 'Your request has been sent to technicians who match your repair needs.'} We’ll notify you when technicians respond with their quotations.</Muted>
       <Card tone="blue" style={{ marginTop: 18 }}>
-        <CatTile cat={s.cat} model={s.model} size={64} bg="#fff" />
+        {mine.length ? <View style={{ flexDirection: 'row', gap: 8 }}>{mine.map((m, i) => <Thumb key={i} m={m} />)}</View> : <CatTile cat={s.cat} model={s.model} size={64} bg="#fff" />}
         <T style={{ fontSize: 17, fontWeight: '800', marginTop: 12 }}>{info.short} repair</T>
         <Muted>{s.model ? `${s.model} · ` : ''}{catName(s.cat)}</Muted>
         <Row style={{ marginTop: 14, alignItems: 'flex-start' }}>
