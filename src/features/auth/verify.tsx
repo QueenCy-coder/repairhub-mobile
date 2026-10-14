@@ -12,7 +12,7 @@ import { useStore } from '../../shared/core/store';
 type Channel = 'email' | 'phone';
 
 export function VerifyAccount() {
-  const { run, busy, set } = useStore();
+  const { run, busy, set, toast } = useStore();
   const params = useLocalSearchParams<{ email?: string; phone?: string }>();
   const email = String(params.email ?? '').trim().toLowerCase();
   const phone = String(params.phone ?? '');
@@ -31,7 +31,7 @@ export function VerifyAccount() {
       const d = await backend.sendVerificationCode(email, ch);
       if (d.verified) { set({ authMode: 'login' }); router.replace('/login'); return; }
       setDevCode(d.code ?? '');
-      if (d.code) pushCode(d.code);
+      if (d.code) pushCode(d.code).then(ok => { if (!ok) toast('Notifications are off, so your code is shown on this screen.'); });
       setSent(true); setWrong(false); setCode('');
       setDestination(ch === 'phone' ? masked(String(d.destination ?? phone)) : String(d.destination ?? email));
     });

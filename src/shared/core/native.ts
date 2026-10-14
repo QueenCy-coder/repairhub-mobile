@@ -116,14 +116,25 @@ export async function askNotifications() {
   } catch { /* notifications unavailable */ }
 }
 
-/** Delivers a sign-up code as a notification on this phone (there is no email/SMS service yet). */
-export async function pushCode(code: string) {
-  if (Platform.OS === 'web' || !code) return;
+/** Delivers a sign-up code as a notification on this device (there is no email/SMS service yet). Returns false when it couldn't. */
+export async function pushCode(code: string): Promise<boolean> {
+  if (!code) return false;
+  const title = 'Your RepairHub code', body = `${code} is your verification code. It expires in 10 minutes.`;
   try {
-    await askNotifications();
+    if (Platform.OS === 'web') {
+      const W = (globalThis as { Notification?: { permission: string; requestPermission: () => Promise<string>; new (t: string, o?: { body?: string }): unknown } }).Notification;
+      if (!W) return false;
+      if (W.permission === 'default') await W.requestPermission();
+      if (W.permission !== 'granted') return false;
+      new W(title, { body });
+      return true;
+    }
     const N = await import('expo-notifications');
-    await N.scheduleNotificationAsync({ content: { title: 'Your RepairHub code', body: `${code} is your verification code. It expires in 10 minutes.` }, trigger: null });
-  } catch { /* notifications unavailable or denied: the code is still shown on screen */ }
+    await askNotifications();
+    if ((await N.getPermissionsAsync()).status !== 'granted') return false;
+    await N.scheduleNotificationAsync({ content: { title, body, sound: true }, trigger: null });
+    return true;
+  } catch { return false; }
 }
 
 /** Documents (receipts, reports) as evidence: up to 10 MB each. */
