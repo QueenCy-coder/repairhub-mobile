@@ -13,6 +13,9 @@
         "LSApplicationQueriesSchemes": [
           "comgooglemaps",
           "maps",
+          "tel",
+          "comgooglemaps",
+          "maps",
           "tel"
         ],
         "UIUserInterfaceStyle": "Light"
@@ -29,7 +32,13 @@
       "package": "ng.repairhub.clean",
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -79,7 +88,17 @@
       "typedRoutes": false
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "148dc33f-345e-44cb-be21-87f97baf421b"
+      }
+    },
+    "owner": "queennkay",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/148dc33f-345e-44cb-be21-87f97baf421b"
     }
   }
 }
