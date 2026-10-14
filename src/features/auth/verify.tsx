@@ -35,7 +35,7 @@ export function VerifyAccount() {
       if (d.verified) { set({ authMode: 'login' }); router.replace('/login'); return; }
       setDevCode(d.code ?? '');
       setPushed(null); setReveal(false);
-      if (d.code) pushCode(d.code).then(ok => { setPushed(ok); if (!ok) toast('Notifications are off. Tap “Show my code” to see it.'); });
+      if (d.code) pushCode(d.code, String(d.destination ?? email), ch).then(ok => { setPushed(ok); if (!ok) toast('Notifications are off. Tap “Show my code” to see it.'); });
       setSent(true); setWrong(false); setCode('');
       setDestination(ch === 'phone' ? masked(String(d.destination ?? phone)) : String(d.destination ?? email));
     });

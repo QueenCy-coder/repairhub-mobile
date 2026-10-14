@@ -116,23 +116,31 @@ export async function askNotifications() {
   } catch { /* notifications unavailable */ }
 }
 
-/** Delivers a sign-up code as a notification on this device (there is no email/SMS service yet). Returns false when it couldn't. */
-export async function pushCode(code: string): Promise<boolean> {
+/**
+ * Delivers a sign-up code as a notification that reads like the email or text it stands in for (there is no
+ * email/SMS service yet). Returns false when it couldn't be delivered.
+ */
+export async function pushCode(code: string, to = '', channel: 'email' | 'phone' = 'email'): Promise<boolean> {
   if (!code) return false;
-  const title = 'Your RepairHub code', body = `${code} is your verification code. It expires in 10 minutes.`;
+  const email = channel === 'email';
+  const title = email ? 'RepairHub · Verify your account' : 'RepairHub';
+  const subtitle = email && to ? `To: ${to}` : undefined;
+  const body = email
+    ? `Your verification code is ${code}. It expires in 10 minutes. If you didn’t create a RepairHub account, you can ignore this email.`
+    : `${code} is your RepairHub verification code. It expires in 10 minutes. Don’t share it with anyone.`;
   try {
     if (Platform.OS === 'web') {
       const W = (globalThis as { Notification?: { permission: string; requestPermission: () => Promise<string>; new (t: string, o?: { body?: string }): unknown } }).Notification;
       if (!W) return false;
       if (W.permission === 'default') await W.requestPermission();
       if (W.permission !== 'granted') return false;
-      new W(title, { body });
+      new W(title, { body: subtitle ? `${subtitle}\n${body}` : body });
       return true;
     }
     const N = await import('expo-notifications');
     await askNotifications();
     if ((await N.getPermissionsAsync()).status !== 'granted') return false;
-    await N.scheduleNotificationAsync({ content: { title, body, sound: true }, trigger: null });
+    await N.scheduleNotificationAsync({ content: { title, ...(subtitle ? { subtitle } : {}), body, sound: true }, trigger: null });
     return true;
   } catch { return false; }
 }
