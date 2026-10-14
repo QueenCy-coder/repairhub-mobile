@@ -257,16 +257,37 @@ export function Empty({ title, sub, action, onPress }: { title: string; sub: str
   return <View style={{ alignItems: 'center', paddingVertical: 48 }}><View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: C.primarySoft, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 28 }}>🛠️</Text></View><Title style={{ marginTop: 12, textAlign: 'center', fontSize: 18 }}>{title}</Title><Muted style={{ textAlign: 'center', marginBottom: 12 }}>{sub}</Muted>{action ? <Btn title={action} variant="sec" onPress={onPress} style={{ alignSelf: 'stretch' }} /> : null}</View>;
 }
 
-/** Big green check (Booking confirmed / Repair completed / Review submitted): springs in with a soft halo. */
+const CONFETTI = ['#E5484D', '#F5A524', '#3B82F6', '#22C55E', '#EC4899', '#FACC15', '#14B8A6', '#8B5CF6'];
+/** Fixed scatter (so it doesn't jump on re-render): x/y in -1..1 of the burst box, rotation, shape, colour. */
+const CONFETTI_PIECES = Array.from({ length: 110 }, (_, i) => {
+  const r = (n: number) => { const x = Math.sin((i + 1) * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x); };
+  return { x: r(1) * 2 - 1, y: r(2) * 2 - 1, rot: Math.round(r(3) * 180), kind: i % 3, color: CONFETTI[i % CONFETTI.length], delay: Math.round(r(4) * 220) };
+});
+
+/** Success moment (booking confirmed, repair completed, review sent): a blue tick on white, with a confetti burst around it. */
 export function SuccessMark({ size = 72 }: { size?: number }) {
   const pop = React.useRef(new Animated.Value(0)).current;
-  useEffect(() => { Animated.spring(pop, { toValue: 1, useNativeDriver: ND, speed: 10, bounciness: 14 }).start(); }, [pop]);
+  const burst = React.useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(pop, { toValue: 1, useNativeDriver: ND, speed: 10, bounciness: 14 }).start();
+    Animated.timing(burst, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: ND }).start();
+  }, [pop, burst]);
+  const w = size * 2.7, h = size * 2.1;
   return (
-    <View style={{ width: size + 16, height: size + 16, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' }}>
-      <Pulse size={size + 16} color="#3DA35D" />
+    <View style={{ width: w, height: h, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' }}>
+      {CONFETTI_PIECES.map((c, i) => {
+        // Keep the middle clear for the tick.
+        const px = c.x * (w / 2 - 6), py = c.y * (h / 2 - 6);
+        if (Math.hypot(px, py) < size * 0.66) return null;
+        const shape = c.kind === 0 ? { width: 11, height: 6, borderRadius: 1 } : c.kind === 1 ? { width: 5, height: 16, borderRadius: 3 } : { width: 8, height: 8, borderRadius: 4 };
+        return (
+          <Animated.View key={i} style={{ position: 'absolute', left: w / 2 + px - 4, top: h / 2 + py - 4, backgroundColor: c.color, ...shape, opacity: burst,
+            transform: [{ translateX: burst.interpolate({ inputRange: [0, 1], outputRange: [-px * 0.8, 0] }) }, { translateY: burst.interpolate({ inputRange: [0, 1], outputRange: [-py * 0.8, 0] }) }, { rotate: `${c.rot}deg` }] }} />
+        );
+      })}
       <Animated.View style={{ transform: [{ scale: pop }], opacity: pop }}>
-        <View style={{ width: size + 16, height: size + 16, borderRadius: (size + 16) / 2, backgroundColor: C.okBg, alignItems: 'center', justifyContent: 'center' }}>
-          <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#3DA35D', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: size / 2, fontWeight: '800' }}>✓</Text></View>
+        <View style={{ width: size + 14, height: size + 14, borderRadius: (size + 14) / 2, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', shadowColor: '#1D2B53', shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 3 }}>
+          <Ionicons name="checkmark" size={size * 0.62} color={C.primary} />
         </View>
       </Animated.View>
     </View>
