@@ -2,8 +2,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import React from 'react';
-import { View } from 'react-native';
-import { Bold, C, Card, Empty, FadeIn, Muted, Row } from './ui';
+import { Linking, View } from 'react-native';
+import { notificationsAllowed } from '../core/native';
+import { Banner, Bold, C, Card, Empty, FadeIn, Link, Muted, Row } from './ui';
 
 type Note = { title: string; body: string; at: string; route?: string };
 type Icon = React.ComponentProps<typeof Ionicons>['name'];
@@ -20,9 +21,13 @@ const KINDS: [RegExp, Icon, string, string][] = [
 const kind = (t: string) => KINDS.find(([re]) => re.test(t)) ?? [null, 'notifications' as Icon, C.mute, C.soft];
 
 export function NotificationList({ list, emptySub }: { list: Note[]; emptySub: string }) {
-  if (!list.length) return <Empty title="You’re all caught up" sub={emptySub} />;
+  const [allowed, setAllowed] = React.useState<boolean | null>(null);
+  React.useEffect(() => { notificationsAllowed().then(setAllowed); }, []);
+  const off = allowed === false ? <Banner tone="warn" icon="!">Notifications are turned off for RepairHub on this phone, so quotes and job updates won’t pop up. <Link onPress={() => Linking.openSettings()}>Turn them on</Link></Banner> : null;
+  if (!list.length) return <>{off}<Empty title="You’re all caught up" sub={emptySub} /></>;
   return (
     <>
+      {off}
       {list.map((n, i) => {
         const [, icon, fg, bg] = kind(n.title);
         return (

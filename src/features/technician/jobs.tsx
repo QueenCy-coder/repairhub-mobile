@@ -71,7 +71,7 @@ export function Jobs() {
             <FadeIn key={j.id} delay={i * 60}>
               <Card>
                 <Row style={{ alignItems: 'flex-start', gap: 12 }}>
-                  <JobPhoto cat={j.cat} model={j.dev} size={84} uri={j.media?.[0]} />
+                  <JobPhoto cat={j.cat} model={j.dev} size={72} uri={j.media?.[0]} />
                   <View style={{ flex: 1, gap: 3 }}>
                     <Row style={{ justifyContent: 'flex-start', gap: 6, flexWrap: 'wrap' }}>
                       <T style={{ fontSize: 15, fontWeight: '700', flexShrink: 1 }} numberOfLines={2}>{jobTitle(j)}</T>
@@ -81,11 +81,11 @@ export function Jobs() {
                     <InfoTag icon="location-outline" label={`${Number.isFinite(j.km) ? `${kmLabel(j.km)} · ` : ''}${j.area} • ${j.mode}`} />
                     <InfoTag icon="calendar-outline" label={`${j.when} · posted ${j.ago}`} />
                   </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <T style={{ fontSize: 18, fontWeight: '800' }}>{N(mine ? mine.labour + mine.parts : typicalPrice(j.cat, j.issue))}</T>
-                    <Muted style={{ fontSize: 11 }}>{mine ? 'Your quote' : 'Typical price'}</Muted>
-                  </View>
                 </Row>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 10 }}>
+                    <Muted style={{ fontSize: 12 }}>{mine ? 'Your quote' : 'Typical price'}</Muted>
+                    <T style={{ fontSize: 18, fontWeight: '800' }}>{N(mine ? mine.labour + mine.parts : typicalPrice(j.cat, j.issue))}</T>
+                  </View>
                 <Chips><Chip tone="blue" label={catName(j.cat)} /><Chip tone="blue" label={shortIssue(j.issue, 26)} /></Chips>
                 <Btns>
                   <Btn small title="View details" variant="sec" onPress={() => { set({ viewJob: j.id }); router.push('/job-details'); }} />
@@ -159,7 +159,7 @@ export function JobDetails() {
       <T style={{ fontSize: 14, color: C.text, marginTop: -4 }}>{j.issue}</T>
       <View style={{ marginTop: 12 }}>{media.length ? <MediaGrid items={media} max={media.length} />
         : <Muted>The customer didn’t attach photos.</Muted>}</View>
-      <Card style={{ marginTop: 14 }}><KV k="Category" v={j.cat} /><KV k="Area" v={j.area} /><KV k="Exact address" v={booked ? (s.location || '—') : 'Shared after booking'} /><KV k="Needed" v={j.when} /><KV k="Service" v={j.mode} /><KV k="Posted" v={j.ago} />{myQuote(s, j.id) ? <KV k="Your quote" v={N(myQuote(s, j.id)!.labour + myQuote(s, j.id)!.parts)} /> : null}</Card>
+      <Card style={{ marginTop: 14 }}><KV k="Category" v={catName(j.cat)} /><KV k="Typical price" v={N(typicalPrice(j.cat, j.issue))} /><KV k="Area" v={j.area} /><KV k="Exact address" v={booked ? (s.location || '—') : 'Shared after booking'} /><KV k="Needed" v={j.when} /><KV k="Service" v={j.mode} /><KV k="Posted" v={j.ago} />{myQuote(s, j.id) ? <KV k="Your quote" v={N(myQuote(s, j.id)!.labour + myQuote(s, j.id)!.parts)} /> : null}</Card>
       {booked ? <Banner tone={isMine(s) ? 'ok' : 'warn'} icon={isMine(s) ? '✓' : 'ℹ︎'}>{isMine(s) ? 'The customer booked you for this job.' : 'The customer chose another technician.'}</Banner> : null}
     </Screen>
   );

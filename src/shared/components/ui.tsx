@@ -459,7 +459,7 @@ export const IconBox = ({ name, color = C.primary, bg = C.primarySoft, size = 44
 export const InfoTag = ({ icon, label, tone = 'plain' }: { icon: IconName; label: string; tone?: 'plain' | 'blue' }) => (
   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: tone === 'blue' ? 8 : 0, paddingVertical: tone === 'blue' ? 4 : 0, borderRadius: 8, backgroundColor: tone === 'blue' ? C.primarySoft : 'transparent' }}>
     <Ionicons name={icon} size={13} color={tone === 'blue' ? C.primary : C.mute} />
-    <Text style={{ fontSize: 12, color: tone === 'blue' ? C.primary : C.text, fontWeight: tone === 'blue' ? '600' : '400' }} numberOfLines={1}>{label}</Text>
+    <Text style={{ flexShrink: 1, fontSize: 12, color: tone === 'blue' ? C.primary : C.text, fontWeight: tone === 'blue' ? '600' : '400' }} numberOfLines={2}>{label}</Text>
   </View>
 );
 /** Status pill with a coloured dot. */

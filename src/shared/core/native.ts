@@ -111,9 +111,17 @@ export async function askNotifications() {
   if (Platform.OS === 'web') return;
   try {
     const N = await import('expo-notifications');
+    // Android needs the channel to exist before it will show (or ask about) notifications.
+    if (Platform.OS === 'android') await N.setNotificationChannelAsync('default', { name: 'RepairHub', importance: N.AndroidImportance.MAX, vibrationPattern: [0, 200, 100, 200] }).catch(() => {});
     const cur = await N.getPermissionsAsync();
     if (cur.status === 'undetermined') await N.requestPermissionsAsync({ ios: { allowAlert: true, allowBadge: false, allowSound: true } });
   } catch { /* notifications unavailable */ }
+}
+
+/** Are notifications allowed on this phone? null when we can't tell (web, or the module isn't available). */
+export async function notificationsAllowed(): Promise<boolean | null> {
+  if (Platform.OS === 'web') return null;
+  try { const N = await import('expo-notifications'); return (await N.getPermissionsAsync()).status === 'granted'; } catch { return null; }
 }
 
 /**

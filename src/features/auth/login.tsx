@@ -17,24 +17,29 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [tried, setTried] = useState(false);
+  /** Why the last attempt failed (wrong email or password, wrong account type, no connection); stays until a field is edited. */
+  const [authErr, setAuthErr] = useState<string | null>(null);
   const err = emailError(email);
   const go = async () => {
     setTried(true);
+    setAuthErr(null);
     if (err || !pw) return;
     const role = s.signupRole;
     // An account that hasn't confirmed its email/phone can't sign in: send them to the code screen.
-    let unverified = false;
+    let unverified = false, failMsg: string | null = null;
     const ok = await run(async () => {
       try {
         await backend.login({ role, email, password: pw }, set);
       } catch (e) {
         if (e instanceof ApiError && e.details && (e.details as { verificationRequired?: boolean }).verificationRequired) { unverified = true; return; }
+        failMsg = e instanceof Error ? e.message : null;
         throw e;
       }
     });
     if (unverified) { setPw(''); router.push({ pathname: '/verify-account', params: { email: email.trim().toLowerCase() } }); return; }
-    if (!ok) { setPw(''); setTried(false); return; }
-    if (s.api) await backend.refresh(get, set).catch(() => {});
+    if (!ok) { setAuthErr(failMsg ?? 'We couldn’t log you in. Check your details and try again.'); setPw(''); setTried(false); return; }
+    // Load the person's profile before choosing the screen (a returning technician or centre must not be sent back to registration).
+    if (get().api) await backend.refresh(get, set).catch(() => {});
     const cur = get();
     // A technician or center that hasn't finished registration continues where they left off.
     enterApp(role === 'technician' ? (cur.techVerif === 'new' ? '/tech-register' : '/tech-home')
@@ -45,9 +50,10 @@ export function Login() {
       <Screen title="" footer={<><Btn title={busy ? 'Logging in…' : 'Log In'} disabled={busy} onPress={go} /><Muted style={{ textAlign: 'center', marginTop: 14 }}>Don’t have an account? <Link onPress={() => { set({ authMode: 'signup' }); router.replace('/signup'); }}>Create Account</Link></Muted></>}>
         <Title style={{ textAlign: 'center' }}>Welcome Back!</Title>
         <Muted style={{ textAlign: 'center', fontSize: 14, marginBottom: 14 }}>Log in to your {s.signupRole === 'customer' ? 'customer' : s.signupRole === 'technician' ? 'technician' : 'service center'} account to continue.</Muted>
-        {verified === '1' ? <Banner tone="ok" icon="✓">Your account is verified. Log in to continue.</Banner> : null}
-        <Field label="Email address" required error={tried && err}><Input icon="✉︎" value={email} invalid={tried && !!err} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} textContentType="username" autoComplete="username" importantForAutofill="yes" /></Field>
-        <Field label="Password" required error={tried && !pw ? 'Enter your password' : null}><PasswordInput value={pw} onChange={setPw} invalid={tried && !pw} onSubmit={go} /></Field>
+        {verified === '1' && !authErr ? <Banner tone="ok" icon="✓">Your account is verified. Log in to continue.</Banner> : null}
+        {authErr ? <Banner tone="bad" icon="!">{authErr}</Banner> : null}
+        <Field label="Email address" required error={tried && err}><Input icon="✉︎" value={email} invalid={(tried && !!err) || !!authErr} onChangeText={t => { setEmail(t); setAuthErr(null); }} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} textContentType="username" autoComplete="username" importantForAutofill="yes" /></Field>
+        <Field label="Password" required error={tried && !pw ? 'Enter your password' : null}><PasswordInput value={pw} onChange={t => { setPw(t); setAuthErr(null); }} invalid={(tried && !pw) || !!authErr} onSubmit={go} /></Field>
         <Pressable onPress={() => router.push('/forgot-password')} style={{ alignSelf: 'flex-end', marginTop: -4 }} hitSlop={8}><Link>Forgot password?</Link></Pressable>
       </Screen>
   );
