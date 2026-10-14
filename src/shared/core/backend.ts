@@ -699,7 +699,7 @@ export async function book(get: Get, set: Set) {
  */
 export async function startPayment(get: Get, set: Set) {
   const jobId = await book(get, set);
-  const p = await api<{ reference: string; authorizationUrl: string; amount: number }>('POST', '/transactions/pay', { body: { repairJobId: jobId, method: 'paystack' } });
+  const p = await api<{ reference: string; authorizationUrl: string | null; amount: number }>('POST', '/transactions/pay', { body: { repairJobId: jobId, method: 'paystack' } });
   set({ payRef: p.reference });
   return p;
 }

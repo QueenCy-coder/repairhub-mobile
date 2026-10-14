@@ -13,6 +13,17 @@ This is the Expo (React Native + TypeScript) app, connected to the **RepairHub A
 
 **API connectivity:** every screen-to-endpoint wiring plus the known backend gaps and how to close them is documented in [`docs/API-CONNECTIVITY.md`](docs/API-CONNECTIVITY.md).
 
+## Release links
+
+- **Open in Expo Go (team link):** `exp://u.expo.dev/148dc33f-345e-44cb-be21-87f97baf421b/group/342b3e11-5ff5-4d99-9514-bf8dc310a6bb`
+- **Android app (APK, "RepairHub Main"):** https://expo.dev/artifacts/eas/7CVCKOmGRKXGww54OyCV680GoRs9moGKPP0hSLgZxP8.apk
+- **Build page:** https://expo.dev/accounts/queennkay/projects/repairhub/builds/83ef0451-f1ee-4ed4-893a-161bf682e198
+- **Live API:** https://repairhub-api-1.onrender.com/api
+
+Publish a new update to everyone (no reinstall): `npx eas-cli update --branch main --environment preview --message "what changed"`.
+Build a new APK: `npx eas-cli build --platform android --profile preview`.
+Face ID needs the installed app; Expo Go shows the phone passcode instead.
+
 ## Run it
 
 Requirements: Node 20+, and the **Expo Go** app on your phone (SDK 57).

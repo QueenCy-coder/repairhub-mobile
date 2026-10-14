@@ -75,11 +75,12 @@ export function Pay() {
       if (await run(() => backend.payCash(get, set))) done();
       return;
     }
-    let url = '';
+    let url: string | null = '';
     if (!(await run(async () => { url = (await backend.startPayment(get, set)).authorizationUrl; }))) return;
     set({ payErr: false });
+    if (!url) { await check(); return; } // the server settled the charge at once
     setWaiting(true);
-    if (Platform.OS === 'web') window.open(url, '_blank'); else Linking.openURL(url).catch(() => toast('Couldn’t open the Paystack payment page'));
+    if (Platform.OS === 'web') window.open(url!, '_blank'); else Linking.openURL(url!).catch(() => toast('Couldn’t open the Paystack payment page'));
   };
   const method = (k: typeof s.pay, label: string, sub: string, icon: string) => (
     <Opt key={k} icon={icon} label={label} sub={sub} on={s.pay === k} onPress={() => set({ pay: k, payErr: false })} />
