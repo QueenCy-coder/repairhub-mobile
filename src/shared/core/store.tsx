@@ -6,6 +6,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { AppState } from 'react-native';
 import { ApiError, setOnUnauthorized, setToken } from './api';
 import * as backend from './backend';
+import { pushToken } from './native';
 import { initialState, nowLabel, QueuedUpdate, Role, State, techStages, updateLabel } from './data';
 
 const KEY = 'repairhub.api.v1';
@@ -172,6 +173,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       } catch { setLive(false); }
     };
     full();
+    // Real push: once signed in (and allowed), tell the server which phone to notify.
+    pushToken().then(t => { if (alive) backend.registerPush(t); });
     const id = setInterval(tick, 3000);
     // Coming back to the app: catch up straight away.
     const sub = AppState.addEventListener('change', st => { if (st === 'active' && Date.now() - lastFull > 30000) full(); });

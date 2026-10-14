@@ -1,0 +1,137 @@
+diff --git a/controller/notificationController.js b/controller/notificationController.js
+index 8c2c007..80717f3 100644
+--- a/controller/notificationController.js
++++ b/controller/notificationController.js
+@@ -1,10 +1,23 @@
+ import Notification from '../model/notificationModel.js';
++import User from '../model/userModel.js';
+ import { asyncHandler } from '../utils/asyncHandler.js';
+ import { ok } from '../utils/apiResponse.js';
+ import { notFound } from '../utils/ApiError.js';
+ import { pageMeta, parsePagination } from '../utils/paginate.js';
+ export { notifyUser } from '../services/notificationService.js';
+ 
++// POST /api/notifications/devices   { token }   — remember this phone for push notifications
++export const registerDevice = asyncHandler(async (req, res) => {
++    await User.updateOne({ _id: req.user._id }, { $addToSet: { pushTokens: req.body.token } });
++    return ok(res, { registered: true }, 'Device registered');
++});
++
++// DELETE /api/notifications/devices   { token }   — e.g. on log out
++export const unregisterDevice = asyncHandler(async (req, res) => {
++    await User.updateOne({ _id: req.user._id }, { $pull: { pushTokens: req.body.token } });
++    return ok(res, null, 'Device removed');
++});
++
+ // GET /api/notifications?unread=true
+ export const listMyNotifications = asyncHandler(async (req, res) => {
+     const filter = { userId: req.user._id };
+diff --git a/model/userModel.js b/model/userModel.js
+index fff83cb..f7088be 100644
+--- a/model/userModel.js
++++ b/model/userModel.js
+@@ -13,6 +13,7 @@ const userSchema = new mongoose.Schema(
+     role: { type: String, enum: ROLES, required: true },
+     status: { type: String, enum: ['active', 'suspended'], default: 'active' },
+     lastLoginAt: { type: Date },
++    pushTokens: { type: [String], default: [], select: false }, // Expo push tokens of this person's phones
+     // Password reset (self-service). Only the SHA-256 hash of the token is stored; expires in 1h.
+     passwordResetHash: { type: String, select: false },
+     passwordResetExpires: { type: Date },
+diff --git a/routes/notificationRoutes.js b/routes/notificationRoutes.js
+index aa0e90d..5239f66 100644
+--- a/routes/notificationRoutes.js
++++ b/routes/notificationRoutes.js
+@@ -1,13 +1,15 @@
+ import { Router } from 'express';
+-import { listMyNotifications, markAsRead, markAllAsRead } from '../controller/notificationController.js';
++import { listMyNotifications, markAsRead, markAllAsRead, registerDevice, unregisterDevice } from '../controller/notificationController.js';
+ import { protect } from '../middleware/auth.js';
+ import { validate, idParam } from '../middleware/validate.js';
+-import { notificationList } from '../validators/schemas.js';
++import { notificationList, deviceToken } from '../validators/schemas.js';
+ 
+ const router = Router();
+ router.param('id', idParam);
+ 
+ router.get('/', protect, validate(notificationList, 'query'), listMyNotifications);
++router.post('/devices', protect, validate(deviceToken), registerDevice);
++router.delete('/devices', protect, validate(deviceToken), unregisterDevice);
+ router.patch('/read-all', protect, markAllAsRead);
+ router.patch('/:id/read', protect, markAsRead);
+ 
+diff --git a/services/notificationService.js b/services/notificationService.js
+index d7e5cff..9c8d866 100644
+--- a/services/notificationService.js
++++ b/services/notificationService.js
+@@ -1,10 +1,13 @@
+ import Notification from '../model/notificationModel.js';
++import { sendPush } from './pushService.js';
+ 
+ // Persists an in-app notification. Never throws: a failed notification must not break the
+ // business action that triggered it.
+ export const notifyUser = async (userId, type, message, refId) => {
+     try {
+-        return await Notification.create({ userId, type, message, refId });
++        const note = await Notification.create({ userId, type, message, refId });
++        sendPush(userId, type, message, refId); // not awaited: delivery to the phone must never slow the request down
++        return note;
+     } catch (err) {
+         console.error('notifyUser failed:', err.message);
+         return null;
+@@ -15,6 +18,7 @@ export const notifyMany = async (userIds, type, message, refId) => {
+     if (!userIds.length) return;
+     try {
+         await Notification.insertMany(userIds.map((userId) => ({ userId, type, message, refId })));
++        userIds.forEach((userId) => sendPush(userId, type, message, refId));
+     } catch (err) {
+         console.error('notifyMany failed:', err.message);
+     }
+diff --git a/services/pushService.js b/services/pushService.js
+new file mode 100644
+index 0000000..3cce8e5
+--- /dev/null
++++ b/services/pushService.js
+@@ -0,0 +1,30 @@
++import User from '../model/userModel.js';
++
++// Real push notifications: every in-app notification is also sent to the person's registered phones through
++// Expo's push service, so it reaches them even when the app is closed. Never throws (a failed push must not
++// break the action that triggered it). Set PUSH_DISABLED=true to turn it off.
++const TITLES = {
++  repair_request: 'New repair request', quotation: 'Quotes', appointment: 'Booking', status_update: 'Repair update',
++  payment: 'Payment', warranty: 'Warranty', review: 'New review', dispute: 'Dispute', verification: 'Verification',
++};
++const isExpoToken = (t) => /^Expo(nent)?PushToken\[.+\]$/.test(t);
++
++export const sendPush = async (userId, type, message, refId) => {
++  try {
++    if (process.env.PUSH_DISABLED === 'true') return;
++    const user = await User.findById(userId).select('+pushTokens');
++    const tokens = (user?.pushTokens || []).filter(isExpoToken);
++    if (!tokens.length) return;
++    const res = await fetch('https://exp.host/--/api/v2/push/send', {
++      method: 'POST',
++      headers: { 'content-type': 'application/json', accept: 'application/json' },
++      body: JSON.stringify(tokens.map((to) => ({ to, title: TITLES[type] || 'RepairHub', body: message, sound: 'default', data: { type, refId: refId ? String(refId) : undefined } }))),
++    });
++    const json = await res.json().catch(() => null);
++    // Drop phones that no longer exist (app uninstalled).
++    const dead = (json?.data || []).map((t, i) => (t?.details?.error === 'DeviceNotRegistered' ? tokens[i] : null)).filter(Boolean);
++    if (dead.length) await User.updateOne({ _id: userId }, { $pull: { pushTokens: { $in: dead } } });
++  } catch (err) {
++    console.error('push failed:', err.message);
++  }
++};
+diff --git a/validators/schemas.js b/validators/schemas.js
+index 916596f..388a079 100644
+--- a/validators/schemas.js
++++ b/validators/schemas.js
+@@ -23,6 +23,7 @@ export const register = Joi.object({
+   role: Joi.string().valid('customer', 'technician', 'service_center').required(),
+   businessName: Joi.string().trim().max(150), // service_center only
+ });
++export const deviceToken = Joi.object({ token: Joi.string().trim().pattern(/^Expo(nent)?PushToken\[.+\]$/).required() });
+ export const login = Joi.object({ email: Joi.string().trim().lowercase().email({ tlds: { allow: false } }).required(), password: Joi.string().required() });
+ export const verifySend = Joi.object({
+   email: Joi.string().trim().lowercase().email({ tlds: { allow: false } }).required(),

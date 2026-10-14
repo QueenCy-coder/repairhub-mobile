@@ -5,6 +5,7 @@ import { Pressable, Text, View, Alert } from 'react-native';
 import { NotificationList } from '../../shared/components/notifications';
 import { Avatar, C, Bold, Btn, Card, Field, FadeIn, Input, Muted, Screen, Title, IconTile, Row, T } from '../../shared/components/ui';
 import * as backend from '../../shared/core/backend';
+import { BiometricRow } from '../../shared/components/biometric-row';
 import { JobStatus, myPastRequests, notesFor, State } from '../../shared/core/data';
 import { warrantyOf } from './warranty';
 import { pickMedia } from '../../shared/core/native';
@@ -90,6 +91,7 @@ export function CustomerProfile() {
       <MenuRow icon="🛡" label="Warranties" sub={warranties(s) ? `${warranties(s)} active` : 'None active'} to="/warranty" />
       <MenuRow icon="🔔" label="Notifications" to="/alerts" />
       <MenuRow icon="🔑" label="Change password" to="/new-password" />
+      <BiometricRow />
       <Btn title="Log out" variant="ghost" onPress={() => Alert.alert('Log out of RepairHub?', undefined, [{ text: 'Cancel', style: 'cancel' }, { text: 'Log out', style: 'destructive', onPress: logout }])} />
     </Screen>
   );

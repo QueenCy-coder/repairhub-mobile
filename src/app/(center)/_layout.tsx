@@ -2,6 +2,7 @@ import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ColorValue } from 'react-native';
+import { askNotifications } from '../../shared/core/native';
 import { setDeviceRole, useStore } from '../../shared/core/store';
 import { C } from '../../shared/components/ui';
 
@@ -13,6 +14,8 @@ const icon = (name: IconName) => function TabIcon({ color, focused }: { color: C
 export default function CenterTabs() {
   const { s } = useStore();
   React.useEffect(() => { setDeviceRole('service_center'); return () => setDeviceRole(null); }, []);
+  // Anyone already signed in (an update, a new install with a saved session) is asked once so alerts can reach them.
+  React.useEffect(() => { askNotifications(); }, []);
   if (!s.api) return <Redirect href="/" />;
   // A new center sets up its business and sends its documents, then RepairHub's team verifies it.
   if (s.centerVerif === 'new') return <Redirect href="/center-setup" />;

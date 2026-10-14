@@ -895,3 +895,19 @@ export async function markAllRead(set: Set) {
   await api('PATCH', '/notifications/read-all').catch(() => {});
   set(p => ({ unreadCount: 0, notifications: p.notifications.map(n => ({ ...n, read: true })) }));
 }
+
+
+/* ───────── Push notifications: tell the server which phone to notify ───────── */
+let registeredPush: string | null = null;
+/** Registers this phone for push (best effort: a server without the endpoint, or a phone without push, is simply skipped). */
+export async function registerPush(token: string | null) {
+  if (!token || token === registeredPush) return;
+  try { await api('POST', '/notifications/devices', { body: { token } }); registeredPush = token; } catch { /* the server may not support push yet */ }
+}
+/** Called before logging out, while the session is still valid, so this phone stops getting the old account's alerts. */
+export async function forgetPush() {
+  const token = registeredPush;
+  registeredPush = null;
+  if (!token) return;
+  try { await api('DELETE', '/notifications/devices', { body: { token } }); } catch { /* nothing to remove */ }
+}

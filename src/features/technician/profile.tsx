@@ -5,6 +5,7 @@ import { Alert, View, Pressable, StyleSheet, Switch, Text, ScrollView, Animated 
 import { Avatar, Bar, Bold, Btn, C, Card, Chip, IconTile, Muted, Row, Screen, T, Input, FadeIn, Chips, Empty, Stars } from '../../shared/components/ui';
 import { techStats, maskAcct, plural, SERVICES, LAGOS_AREAS, myDoneJobs, shortDate } from '../../shared/core/data';
 import * as backend from '../../shared/core/backend';
+import { BiometricRow } from '../../shared/components/biometric-row';
 import { pickMedia } from '../../shared/core/native';
 import { useStore } from '../../shared/core/store';
 import { useLogout } from '../auth/login';
@@ -46,6 +47,7 @@ export function Me() {
       <MenuRow icon="🏦" label="Payout account" sub={s.payoutAccount ? `${s.payoutAccount.bank} ${maskAcct(s.payoutAccount.number)}` : 'Not set up'} onPress={() => router.push('/payout-account')} />
       <MenuRow icon="🧾" label="Warranty claims" sub="Customers’ claims on your repairs" onPress={() => router.push('/tech-claim')} />
       <MenuRow icon="🔑" label="Change password" onPress={() => router.push('/new-password')} />
+      <BiometricRow />
       <Card tone="dash" style={{ paddingVertical: 12 }}><Row><Row style={{ justifyContent: 'flex-start', gap: 12 }}><IconTile glyph="🗓" size={38} bg={C.soft} /><T style={{ fontSize: 15, color: C.mute }}>Availability calendar</T></Row><Chip tone="off" label="Coming soon" /></Row></Card>
       <Btn title="Log out" variant="ghost" onPress={() => Alert.alert('Log out of RepairHub?', undefined, [{ text: 'Cancel', style: 'cancel' }, { text: 'Log out', style: 'destructive', onPress: logout }])} />
     </Screen>

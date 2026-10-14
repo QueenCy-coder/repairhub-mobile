@@ -3,6 +3,7 @@ import React from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ColorValue } from 'react-native';
 import { JobStatus } from '../../shared/core/data';
+import { askNotifications } from '../../shared/core/native';
 import { setDeviceRole, useStore } from '../../shared/core/store';
 import { C } from '../../shared/components/ui';
 
@@ -14,6 +15,8 @@ const icon = (name: IconName) => function TabIcon({ color, focused }: { color: C
 export default function CustomerTabs() {
   const { s } = useStore();
   React.useEffect(() => { setDeviceRole('customer'); return () => setDeviceRole(null); }, []);
+  // Anyone already signed in (an update, a new install with a saved session) is asked once so alerts can reach them.
+  React.useEffect(() => { askNotifications(); }, []);
   // Quotes to compare, or a finished repair to confirm.
   const needsAction = s.status === JobStatus.Quoted || s.status === JobStatus.Completed;
   if (!s.api) return <Redirect href="/" />;

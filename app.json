@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "RepairHub Clean",
+    "name": "RepairHub",
     "slug": "repairhub",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -80,6 +80,13 @@
         {
           "cameraPermission": "RepairHub uses the camera for your identity selfie and to photograph repairs.",
           "recordAudioAndroid": false
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "RepairHub uses Face ID so you can log in without typing your password."
         }
       ]
     ],

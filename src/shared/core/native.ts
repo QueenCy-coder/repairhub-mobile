@@ -1,3 +1,6 @@
+import Constants from 'expo-constants';
+import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
 import * as Clipboard from 'expo-clipboard';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -169,3 +172,53 @@ export async function pickFiles(limit: number): Promise<{ name: string; size: nu
 /** Copies text to the clipboard. */
 export async function copyText(t: string) { try { await Clipboard.setStringAsync(t); return true; } catch { return false; } }
 
+
+
+/* ───────── Log in with Face ID / fingerprint ───────── */
+// After a normal log-in the person can turn this on: their email and password are then kept in the phone's
+// secure storage (iOS Keychain / Android Keystore), released only after Face ID, Touch ID or a fingerprint.
+
+const LOGIN_KEY = (role: string) => `repairhub.login.${role}`;
+
+/** What this phone can use ("Face ID", "Touch ID", "fingerprint"), or null when there is no enrolled biometric (or on the web). */
+export async function biometricKind(): Promise<'Face ID' | 'Touch ID' | 'fingerprint' | 'biometrics' | null> {
+  if (Platform.OS === 'web') return null;
+  try {
+    if (!(await LocalAuthentication.hasHardwareAsync()) || !(await LocalAuthentication.isEnrolledAsync())) return null;
+    const t = await LocalAuthentication.supportedAuthenticationTypesAsync();
+    if (t.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) return Platform.OS === 'ios' ? 'Face ID' : 'biometrics';
+    if (t.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) return Platform.OS === 'ios' ? 'Touch ID' : 'fingerprint';
+    return 'biometrics';
+  } catch { return null; }
+}
+
+export async function saveLogin(role: string, email: string, password: string) {
+  try { await SecureStore.setItemAsync(LOGIN_KEY(role), JSON.stringify({ email, password }), { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY }); return true; } catch { return false; }
+}
+export async function savedLogin(role: string): Promise<{ email: string; password: string } | null> {
+  if (Platform.OS === 'web') return null;
+  try { const raw = await SecureStore.getItemAsync(LOGIN_KEY(role)); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+export async function forgetLogin(role: string) {
+  if (Platform.OS === 'web') return;
+  try { await SecureStore.deleteItemAsync(LOGIN_KEY(role)); } catch { /* nothing saved */ }
+}
+/** Asks the phone to check the person's face or fingerprint. */
+export async function confirmBiometric(reason: string): Promise<boolean> {
+  try { return (await LocalAuthentication.authenticateAsync({ promptMessage: reason, cancelLabel: 'Use password' })).success; } catch { return false; }
+}
+
+
+/* ───────── Push token (real push when the app is closed) ───────── */
+
+/** This phone's Expo push token, or null when push isn't possible here (web, permission denied, no push set-up on this build). */
+export async function pushToken(): Promise<string | null> {
+  if (Platform.OS === 'web') return null;
+  try {
+    const N = await import('expo-notifications');
+    if ((await N.getPermissionsAsync()).status !== 'granted') return null;
+    const projectId = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId ?? Constants.easConfig?.projectId;
+    if (!projectId) return null;
+    return (await N.getExpoPushTokenAsync({ projectId })).data;
+  } catch { return null; }
+}

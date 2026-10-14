@@ -3,6 +3,7 @@ import React from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ColorValue } from 'react-native';
 import { JobStatus } from '../../shared/core/data';
+import { askNotifications } from '../../shared/core/native';
 import { setDeviceRole, useStore } from '../../shared/core/store';
 import { C } from '../../shared/components/ui';
 
@@ -14,6 +15,8 @@ const icon = (name: IconName) => function TabIcon({ color, focused }: { color: C
 export default function TechTabs() {
   const { s } = useStore();
   React.useEffect(() => { setDeviceRole('technician'); return () => setDeviceRole(null); }, []);
+  // Anyone already signed in (an update, a new install with a saved session) is asked once so alerts can reach them.
+  React.useEffect(() => { askNotifications(); }, []);
   const jobsBadge = s.queue.length || (s.jobId && s.status === JobStatus.Accepted ? '!' : undefined);
   if (!s.api) return <Redirect href="/" />;
   // A new technician registers and uploads their ID, then RepairHub's team approves them (on the admin side).
