@@ -116,6 +116,16 @@ export async function askNotifications() {
   } catch { /* notifications unavailable */ }
 }
 
+/** Delivers a sign-up code as a notification on this phone (there is no email/SMS service yet). */
+export async function pushCode(code: string) {
+  if (Platform.OS === 'web' || !code) return;
+  try {
+    await askNotifications();
+    const N = await import('expo-notifications');
+    await N.scheduleNotificationAsync({ content: { title: 'Your RepairHub code', body: `${code} is your verification code. It expires in 10 minutes.` }, trigger: null });
+  } catch { /* notifications unavailable or denied: the code is still shown on screen */ }
+}
+
 /** Documents (receipts, reports) as evidence: up to 10 MB each. */
 export async function pickFiles(limit: number): Promise<{ name: string; size: number | null }[]> {
   if (limit <= 0) { Alert.alert('Limit reached', 'Remove a file first.'); return []; }

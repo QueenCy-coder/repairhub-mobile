@@ -6,6 +6,7 @@ import { Pressable, TextInput, View } from 'react-native';
 import { Banner, Btn, C, Card, Link, Muted, Row, Screen, Segments, T, Title, mono } from '../../shared/components/ui';
 import * as backend from '../../shared/core/backend';
 import { masked } from '../../shared/core/data';
+import { pushCode } from '../../shared/core/native';
 import { useStore } from '../../shared/core/store';
 
 type Channel = 'email' | 'phone';
@@ -30,6 +31,7 @@ export function VerifyAccount() {
       const d = await backend.sendVerificationCode(email, ch);
       if (d.verified) { set({ authMode: 'login' }); router.replace('/login'); return; }
       setDevCode(d.code ?? '');
+      if (d.code) pushCode(d.code);
       setSent(true); setWrong(false); setCode('');
       setDestination(ch === 'phone' ? masked(String(d.destination ?? phone)) : String(d.destination ?? email));
     });
@@ -112,7 +114,7 @@ export function VerifyAccount() {
       </Row>
 
       <Muted style={{ fontSize: 12, marginTop: 16, textAlign: 'center' }}>
-        No email or SMS service is connected yet, so the code shows here — the same way password reset works for now.
+        No email or SMS service is connected yet, so the code arrives as a notification on this phone and shows here too.
       </Muted>
     </Screen>
   );

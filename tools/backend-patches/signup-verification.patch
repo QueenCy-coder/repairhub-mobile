@@ -1,0 +1,152 @@
+diff --git a/controller/userController.js b/controller/userController.js
+index 0ee62f1..d2f4784 100644
+--- a/controller/userController.js
++++ b/controller/userController.js
+@@ -1,4 +1,5 @@
+ import bcrypt from 'bcryptjs';
++import crypto from 'crypto';
+ import User from '../model/userModel.js';
+ import CustomerProfile from '../model/customerProfileModel.js';
+ import TechnicianProfile from '../model/technicianProfileModel.js';
+@@ -6,7 +7,7 @@ import ServiceCenterProfile from '../model/serviceCenterModel.js';
+ import { asyncHandler } from '../utils/asyncHandler.js';
+ import { created, ok } from '../utils/apiResponse.js';
+ import { generateToken } from '../utils/generateToken.js';
+-import { ApiError, conflict, forbidden, notFound, unauthorized } from '../utils/ApiError.js';
++import { ApiError, badRequest, conflict, forbidden, notFound, unauthorized } from '../utils/ApiError.js';
+ import { pageMeta, parsePagination } from '../utils/paginate.js';
+ 
+ const ROUNDS = () => Number(process.env.BCRYPT_ROUNDS) || 12;
+@@ -22,14 +23,15 @@ export const registerUser = asyncHandler(async (req, res) => {
+   if (await User.exists({ email })) throw conflict('Email already registered');
+ 
+   const passwordHash = await bcrypt.hash(password, ROUNDS());
+-  const user = await User.create({ fullName, email, phone, passwordHash, role });
++  const user = await User.create({ fullName, email, phone, passwordHash, role, verified: false });
+ 
+   // Auto-create the role-specific profile shell.
+   if (role === 'customer') await CustomerProfile.create({ userId: user._id });
+   if (role === 'technician') await TechnicianProfile.create({ userId: user._id });
+   if (role === 'service_center') await ServiceCenterProfile.create({ userId: user._id, businessName: businessName || fullName });
+ 
+-  return created(res, { user, token: generateToken({ id: user._id, role: user.role }) }, 'Registration successful');
++  // No token yet: the account must be verified (POST /users/verify/send + /verify/confirm), then log in.
++  return created(res, { user, verificationRequired: true }, 'Registration successful. Please verify your account.');
+ });
+ 
+ // POST /api/users/login
+@@ -39,12 +41,55 @@ export const loginUser = asyncHandler(async (req, res) => {
+   // Same error for unknown email and wrong password: don't reveal which accounts exist.
+   if (!user || !(await bcrypt.compare(password, user.passwordHash))) throw unauthorized('Invalid credentials');
+   if (user.status !== 'active') throw forbidden('Account suspended. Contact support.');
++  if (user.verified === false) throw new ApiError(403, 'Please verify your account before logging in.', { verificationRequired: true });
+ 
+   user.lastLoginAt = new Date();
+   await user.save();
+   return ok(res, { user, token: generateToken({ id: user._id, role: user.role }) }, 'Login successful');
+ });
+ 
++const CODE_MINUTES = 10, MAX_ATTEMPTS = 5;
++const hashCode = (code) => crypto.createHash('sha256').update(String(code)).digest('hex');
++const maskPhone = (p = '') => (p.length > 4 ? `${'•'.repeat(p.length - 4)}${p.slice(-4)}` : p);
++const maskEmail = (e = '') => e.replace(/^(.).*(@.*)$/, '$1•••$2');
++
++// POST /api/users/verify/send   { email, channel: 'email' | 'phone' }
++// There is no email/SMS provider yet, so the code is returned in the response (set VERIFICATION_RETURN_CODE=false
++// once a provider is wired in at the marked line). Unknown emails get the same reply, minus the code.
++export const sendVerificationCode = asyncHandler(async (req, res) => {
++  const { email, channel } = req.body;
++  const user = await User.findOne({ email });
++  if (!user) return ok(res, { sent: true, channel }, 'If the account exists, a code was sent');
++  if (user.verified !== false) return ok(res, { sent: false, verified: true, channel }, 'Account already verified');
++
++  const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
++  user.verification = { codeHash: hashCode(code), expiresAt: new Date(Date.now() + CODE_MINUTES * 60000), attempts: 0 };
++  await user.save();
++  // TODO: deliver `code` by email (SMTP) or SMS here.
++  const destination = channel === 'phone' ? maskPhone(user.phone) : maskEmail(user.email);
++  const exposeCode = process.env.VERIFICATION_RETURN_CODE !== 'false';
++  return ok(res, { sent: true, channel, destination, expiresInMinutes: CODE_MINUTES, ...(exposeCode ? { code } : {}) }, 'Verification code sent');
++});
++
++// POST /api/users/verify/confirm   { email, code }
++export const confirmVerification = asyncHandler(async (req, res) => {
++  const { email, code } = req.body;
++  const user = await User.findOne({ email }).select('+verification');
++  const v = user?.verification;
++  if (!user || !v?.codeHash) throw badRequest('Invalid or expired code');
++  if (user.verified !== false) return ok(res, { verified: true }, 'Account already verified');
++  if (v.attempts >= MAX_ATTEMPTS || v.expiresAt < new Date()) throw badRequest('Code expired. Request a new one.');
++  if (v.codeHash !== hashCode(code)) {
++    user.verification.attempts += 1;
++    await user.save();
++    throw badRequest('Invalid or expired code');
++  }
++  user.verified = true;
++  user.verification = undefined;
++  await user.save();
++  return ok(res, { verified: true }, 'Account verified');
++});
++
+ export const getMe = asyncHandler(async (req, res) => ok(res, req.user, 'Current user'));
+ 
+ export const getUserById = asyncHandler(async (req, res) => {
+diff --git a/model/userModel.js b/model/userModel.js
+index e8a9742..2c65cd8 100644
+--- a/model/userModel.js
++++ b/model/userModel.js
+@@ -13,6 +13,13 @@ const userSchema = new mongoose.Schema(
+     role: { type: String, enum: ROLES, required: true },
+     status: { type: String, enum: ['active', 'suspended'], default: 'active' },
+     lastLoginAt: { type: Date },
++    // Sign-up verification. Defaults to true so accounts created before this existed keep working;
++    // registerUser creates new accounts with verified:false.
++    verified: { type: Boolean, default: true },
++    verification: {
++      type: new mongoose.Schema({ codeHash: String, expiresAt: Date, attempts: { type: Number, default: 0 } }, { _id: false }),
++      select: false,
++    },
+   },
+   { timestamps: true }
+ );
+@@ -21,6 +28,7 @@ const userSchema = new mongoose.Schema(
+ userSchema.set('toJSON', {
+   transform: (doc, ret) => {
+     delete ret.passwordHash;
++    delete ret.verification;
+     delete ret.__v;
+     return ret;
+   },
+diff --git a/routes/userRoutes.js b/routes/userRoutes.js
+index 458d871..bcd3fa7 100644
+--- a/routes/userRoutes.js
++++ b/routes/userRoutes.js
+@@ -1,5 +1,5 @@
+ import { Router } from 'express';
+-import { registerUser, loginUser, getMe, getUserById, updateUser, deleteUser, changePassword, listUsers, setUserStatus } from '../controller/userController.js';
++import { registerUser, loginUser, getMe, getUserById, updateUser, deleteUser, changePassword, listUsers, setUserStatus, sendVerificationCode, confirmVerification } from '../controller/userController.js';
+ import { protect, authorize } from '../middleware/auth.js';
+ import { validate, idParam } from '../middleware/validate.js';
+ import * as s from '../validators/schemas.js';
+@@ -8,6 +8,8 @@ const router = Router();
+ router.param('id', idParam);
+ 
+ router.post('/register', validate(s.register), registerUser);
++router.post('/verify/send', validate(s.verifySend), sendVerificationCode);
++router.post('/verify/confirm', validate(s.verifyConfirm), confirmVerification);
+ router.post('/login', validate(s.login), loginUser);
+ router.get('/me', protect, getMe);
+ router.post('/change-password', protect, validate(s.changePassword), changePassword);
+diff --git a/validators/schemas.js b/validators/schemas.js
+index c314425..8623e0a 100644
+--- a/validators/schemas.js
++++ b/validators/schemas.js
+@@ -23,6 +23,8 @@ export const register = Joi.object({
+   role: Joi.string().valid('customer', 'technician', 'service_center').required(),
+   businessName: Joi.string().trim().max(150), // service_center only
+ });
++export const verifySend = Joi.object({ email: Joi.string().trim().lowercase().email().required(), channel: Joi.string().valid('email', 'phone').default('email') });
++export const verifyConfirm = Joi.object({ email: Joi.string().trim().lowercase().email().required(), code: Joi.string().trim().pattern(/^\d{6}$/).required() });
+ export const login = Joi.object({ email: Joi.string().trim().lowercase().email().required(), password: Joi.string().required() });
+ export const updateUser = Joi.object({ fullName: Joi.string().trim().min(2).max(100), phone }).min(1);
+ export const changePassword = Joi.object({ currentPassword: Joi.string().required(), newPassword: Joi.string().min(8).max(128).required() });
