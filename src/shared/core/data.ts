@@ -280,15 +280,15 @@ export const CATEGORY_INFO: CatInfo[] = [
   { cat: 'Tablets', label: 'Tablets', short: 'Tablet', sub: 'iPad, Galaxy Tab', group: 'Electronics', icon: 'tablet-portrait-outline' },
   { cat: 'Desktops', label: 'Desktops', short: 'Desktop', sub: 'PC, iMac, all-in-one', group: 'Electronics', icon: 'desktop-outline' },
 ];
-/** Shown until the server's own list has loaded: the categories the live server has. */
-export const LIVE_CATEGORIES = ['Smartphones', 'Laptops', 'Gaming consoles', 'Printers', 'TVs', 'Air conditioners', 'Refrigerators', 'Washing machines', 'Generators'];
-/** What the app offers: exactly the categories the server has (a new one the app doesn't know yet shows with a generic icon). */
-export const offeredCategories = (s: Pick<State, 'catIds'>): string[] => {
-  const have = Object.keys(s.catIds ?? {});
-  if (!have.length) return LIVE_CATEGORIES;
-  const rank = (c: string) => { const i = CATEGORY_INFO.findIndex(x => x.cat === c); return i < 0 ? 99 : i; };
-  return [...have].sort((a, b) => rank(a) - rank(b));
-};
+/** The five categories the app launches with, and the two appliance categories shown as "coming soon". */
+export const LAUNCH_CATEGORIES = ['Smartphones', 'Laptops', 'Tablets', 'Desktops', 'Printers'];
+export const COMING_SOON_CATEGORIES = ['Air conditioners', 'Washing machines'];
+export const LIVE_CATEGORIES = LAUNCH_CATEGORIES;
+/** Everything shown in pickers and on Home: the launch five first, then the coming-soon ones. */
+export const shownCategories = (): string[] => [...LAUNCH_CATEGORIES, ...COMING_SOON_CATEGORIES];
+/** Can a request be made in this category right now? Needs to be a launch category that the server actually has (until the list loads, assume yes). */
+export const categoryAvailable = (s: Pick<State, 'catIds'>, cat: string): boolean => LAUNCH_CATEGORIES.includes(cat) && (!Object.keys(s.catIds ?? {}).length || !!s.catIds[cat]);
+export const offeredCategories = (_s?: Pick<State, 'catIds'>): string[] => LAUNCH_CATEGORIES;
 /** The name people see (the server's own wording): Phones, Televisions, Refrigerators & freezers … */
 export const catName = (cat: string) => ({ Smartphones: 'Phones', TVs: 'Televisions', Refrigerators: 'Refrigerators & freezers' } as Record<string, string>)[cat] ?? cat;
 export const catInfo = (cat: string): CatInfo => CATEGORY_INFO.find(c => c.cat === cat) ?? { cat, label: cat, short: cat, sub: 'Repairs', group: 'Electronics', icon: 'construct-outline' };

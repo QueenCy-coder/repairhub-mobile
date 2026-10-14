@@ -39,7 +39,7 @@ export function PasswordInput({ value, onChange, invalid, placeholder = 'Enter y
   return (
     <View>
       <Input icon="🔒" value={value} invalid={invalid} onChangeText={onChange} placeholder={placeholder} secureTextEntry={!show} autoCapitalize="none" autoCorrect={false}
-        textContentType={newPassword ? 'newPassword' : 'password'} autoComplete={newPassword ? 'new-password' : 'current-password'} style={{ paddingRight: 44 }}
+        textContentType={newPassword ? 'newPassword' : 'password'} autoComplete={newPassword ? 'new-password' : 'current-password'} importantForAutofill="yes" style={{ paddingRight: 44 }}
         onSubmitEditing={onSubmit} returnKeyType={onSubmit ? 'go' : undefined} />
       <Pressable onPress={() => setShow(v => !v)} hitSlop={10} accessibilityRole="button" accessibilityLabel={show ? 'Hide password' : 'Show password'} style={{ position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' }}>
         <Ionicons name={show ? 'eye-off-outline' : 'eye-outline'} size={20} color={C.mute} />

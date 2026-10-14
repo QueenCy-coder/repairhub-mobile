@@ -6,7 +6,7 @@ import { Pressable, ScrollView, View, Text } from 'react-native';
 import { C, Input, Muted, T, CatTile, Btn, Field, MediaGrid, Screen, ChoiceOrType, Opt, Bold, Card, Chip, Row, Thumb, Empty } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
-import { isListedModel, MODELS, JobStatus, offeredCategories, catInfo, DATES, TIME_WINDOWS } from '../../shared/core/data';
+import { isListedModel, MODELS, JobStatus, shownCategories, categoryAvailable, catInfo, DATES, TIME_WINDOWS } from '../../shared/core/data';
 import { pickMedia, askNotifications } from '../../shared/core/native';
 import { useStore } from '../../shared/core/store';
 import { EditLink, catNoun, requestErrors } from './common';
@@ -91,14 +91,15 @@ export function NewRequest() {
       <Muted style={{ marginBottom: 12 }}>Step 1 of 3 · Tell us what’s wrong</Muted>
       <Field label="Device" required error={show('cat')}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {offeredCategories(s).map(c => {
+          {shownCategories().map(c => {
             const on = s.cat === c;
+            const soon = !categoryAvailable(s, c);
             return (
-              <Pressable key={c} onPress={() => c !== s.cat && set({ cat: c, ...(isListedModel(c, s.model) ? {} : { model: '', modelOther: false }) })}
+              <Pressable key={c} disabled={soon} onPress={() => c !== s.cat && set({ cat: c, ...(isListedModel(c, s.model) ? {} : { model: '', modelOther: false }) })}
                 accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={c}
-                style={({ pressed }) => ({ width: '31%', flexGrow: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 14, borderWidth: on ? 2 : 1, borderColor: on ? C.primary : C.line, backgroundColor: on ? C.primarySoft : '#fff', transform: [{ scale: pressed ? 0.96 : 1 }] })}>
+                style={({ pressed }) => ({ opacity: soon ? 0.5 : 1, width: '31%', flexGrow: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 14, borderWidth: on ? 2 : 1, borderColor: on ? C.primary : C.line, backgroundColor: on ? C.primarySoft : '#fff', transform: [{ scale: pressed ? 0.96 : 1 }] })}>
                 <CatTile cat={c} size={42} bg={on ? '#fff' : C.primarySoft} />
-                <Text style={{ marginTop: 6, fontSize: 11, fontWeight: on ? '700' : '500', color: on ? C.primary : C.text }} numberOfLines={1}>{catInfo(c).short}</Text>
+                <Text style={{ marginTop: 6, fontSize: 11, fontWeight: on ? '700' : '500', color: on ? C.primary : C.text }} numberOfLines={1}>{soon ? 'Coming soon' : catInfo(c).short}</Text>
                 {on ? <View style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: 9, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' }}><Ionicons name="checkmark" size={10} color="#fff" /></View> : null}
               </Pressable>
             );

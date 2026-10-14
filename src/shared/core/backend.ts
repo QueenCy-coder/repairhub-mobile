@@ -203,7 +203,9 @@ async function categories(set: Set, get: Get) {
   set({ catIds: map });
   return map as Record<string, string>;
 }
-const catName = (s: State, id: any) => (typeof id === 'object' && id?.name && (CAT_ALIAS[id.name] ?? id.name)) || Object.entries(s.catIds ?? {}).find(([, v]) => v === String(id))?.[0] || 'Smartphones';
+const catName = (s: State, id: any, fallback = 'Smartphones') => (typeof id === 'object' && id?.name && (CAT_ALIAS[id.name] ?? id.name)) || Object.entries(s.catIds ?? {}).find(([, v]) => v === String(id))?.[0] || fallback;
+/** A person's skills: the categories we know, once each (sub-categories and unknown ids are dropped, never shown as phones). */
+const skillsOf = (s: State, ids: any[] | undefined): string[] => [...new Set((ids ?? []).map(c => catName(s, c, '')).filter(Boolean))];
 
 /* ───────── refresh (server → app state) ───────── */
 
@@ -275,7 +277,7 @@ async function loadQuotes(rid: string, get: Get, set: Set, at: Point | null) {
   const accounts: Account[] = quotes.map((q, i) => {
     const p = profiles[i];
     return { role: 'technician', name: q.name, phone: '', email: '', pwHash: null, provider: 'password', onboarded: true, createdAt: ts(p?.createdAt),
-      verif: 'verified', skills: (p?.serviceCategoryIds ?? []).map((c: any) => catName(cur, c)), areas: p?.serviceAreas ?? q.areas ?? [],
+      verif: 'verified', skills: skillsOf(cur, p?.serviceCategoryIds ?? []), areas: p?.serviceAreas ?? q.areas ?? [],
       apiId: q.techId, bio: p?.bio, years: p?.experienceYears, rating: q.rating, reviews: q.reviews ?? 0, jobs: q.jobs } as Account;
   });
   set(p => ({ apiQuotes: quotes, accounts: [...accounts, ...p.accounts.filter(a => !accounts.some(b => b.name === a.name))] }));
@@ -405,7 +407,7 @@ async function refreshTech(get: Get, set: Set) {
   // The technician's own profile (verification, rating): reloaded while under review, or with the extras.
   const prof = extras ? (techProf = await api<any>('GET', '/technician-profiles/me')) : techProf;
   const s0 = get();
-  const skills = (prof.serviceCategoryIds ?? []).map((c: any) => catName(s0, c));
+  const skills = skillsOf(s0, prof.serviceCategoryIds ?? []);
   const techVerif = prof.verificationStatus === 'verified' ? 'verified' : prof.verificationStatus === 'rejected' ? 'rejected' : prof.verificationDocs?.length ? 'pending' : 'new';
   set({ techProfileId: prof._id, techVerif, rejectNote: prof.verificationFeedback ?? '', ...(skills.length ? { skills } : {}), ...(prof.serviceAreas?.length ? { areas: prof.serviceAreas } : {}),
     techRating: { avg: prof.ratingAvg ?? 0, count: prof.ratingCount ?? 0, jobs: prof.jobsCompleted ?? 0 }, techSubmittedAt: ts(prof.updatedAt) });
@@ -502,7 +504,7 @@ async function refreshCenter(get: Get, set: Set) {
   // The center's own profile (verification, rating): reloaded while under review, or with the extras.
   const prof = extras ? (centerProf = await api<any>('GET', '/service-centers/me')) : centerProf;
   const s0 = get();
-  const skills = (prof.serviceCategoryIds ?? []).map((c: any) => catName(s0, c));
+  const skills = skillsOf(s0, prof.serviceCategoryIds ?? []);
   const centerVerif = prof.verificationStatus === 'verified' ? 'verified' : prof.verificationStatus === 'rejected' ? 'rejected' : prof.verificationDocs?.length ? 'pending' : 'new';
   set({
     centerId: prof._id, centerVerif, rejectNote: prof.verificationFeedback ?? '',
@@ -592,7 +594,7 @@ export async function listTechnicians(get: Get, set: Set) {
   const list = await api<any[]>('GET', '/technician-profiles', { query: { sort: 'rating', limit: 50 } });
   const cur = get();
   const accounts: Account[] = list.map(p => ({ role: 'technician', name: p.userId?.fullName ?? 'Technician', phone: '', email: '', pwHash: null, provider: 'password', onboarded: true,
-    createdAt: ts(p.createdAt), verif: 'verified', skills: (p.serviceCategoryIds ?? []).map((c: any) => catName(cur, c)), areas: p.serviceAreas ?? [],
+    createdAt: ts(p.createdAt), verif: 'verified', skills: skillsOf(cur, p.serviceCategoryIds ?? []), areas: p.serviceAreas ?? [],
     apiId: p._id, bio: p.bio, years: p.experienceYears, rating: Math.round((p.ratingAvg ?? 0) * 10) / 10, reviews: p.ratingCount ?? 0, jobs: p.jobsCompleted ?? 0 } as Account));
   set(p => ({ accounts: [...accounts, ...p.accounts.filter(a => !accounts.some(b => b.apiId === a.apiId || b.name === a.name))] }));
 }

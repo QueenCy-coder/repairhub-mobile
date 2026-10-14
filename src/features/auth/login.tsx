@@ -46,7 +46,7 @@ export function Login() {
         <Title style={{ textAlign: 'center' }}>Welcome Back!</Title>
         <Muted style={{ textAlign: 'center', fontSize: 14, marginBottom: 14 }}>Log in to your {s.signupRole === 'customer' ? 'customer' : s.signupRole === 'technician' ? 'technician' : 'service center'} account to continue.</Muted>
         {verified === '1' ? <Banner tone="ok" icon="✓">Your account is verified. Log in to continue.</Banner> : null}
-        <Field label="Email address" required error={tried && err}><Input icon="✉︎" value={email} invalid={tried && !!err} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} textContentType="emailAddress" autoComplete="email" /></Field>
+        <Field label="Email address" required error={tried && err}><Input icon="✉︎" value={email} invalid={tried && !!err} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} textContentType="username" autoComplete="username" importantForAutofill="yes" /></Field>
         <Field label="Password" required error={tried && !pw ? 'Enter your password' : null}><PasswordInput value={pw} onChange={setPw} invalid={tried && !pw} onSubmit={go} /></Field>
         <Pressable onPress={() => router.push('/forgot-password')} style={{ alignSelf: 'flex-end', marginTop: -4 }} hitSlop={8}><Link>Forgot password?</Link></Pressable>
       </Screen>

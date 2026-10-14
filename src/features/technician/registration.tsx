@@ -5,7 +5,7 @@ import React from 'react';
 import { Alert, Text, View, Pressable } from 'react-native';
 import { Bold, Btn, C, Card, Chip, Chips, Field, H4, Input, MediaGrid, Muted, Opt, Row, Screen, T, Avatar, StatusPill, Banner, FadeIn, Link } from '../../shared/components/ui';
 import * as backend from '../../shared/core/backend';
-import { offeredCategories, catName, LAGOS_AREAS } from '../../shared/core/data';
+import { shownCategories, categoryAvailable, catName, LAGOS_AREAS } from '../../shared/core/data';
 import { askNotifications, pickMedia, call } from '../../shared/core/native';
 import { useStore } from '../../shared/core/store';
 import { NameFields, joinName, nameErrors, splitName } from '../auth/fields';
@@ -44,7 +44,7 @@ export function TechRegister() {
       <Field label="Phone"><Input value={`+234 ${s.techPhone}   ✓ verified`} editable={false} /></Field>
       <H4>2 · Services & skills</H4>
       <Card><Row><Bold>Electronics</Bold><Chip tone="ok" label="Live in Lagos" /></Row>
-        <View style={{ marginTop: 8 }}>{offeredCategories(s).map(k => <Opt key={k} check label={catName(k)} on={s.skills.includes(k)} onPress={() => set(p => ({ skills: p.skills.includes(k) ? p.skills.filter(x => x !== k) : [...p.skills, k] }))} />)}</View>
+        <View style={{ marginTop: 8 }}>{shownCategories().map(k => { const soon = !categoryAvailable(s, k); return <Opt key={k} check label={soon ? `${catName(k)} · coming soon` : catName(k)} disabled={soon} on={!soon && s.skills.includes(k)} onPress={() => set(p => ({ skills: p.skills.includes(k) ? p.skills.filter(x => x !== k) : [...p.skills, k] }))} />; })}</View>
         <Muted>Home appliances, home services and furniture open later. You can add them when they launch.</Muted>
       </Card>
       <H4>3 · Service area</H4>

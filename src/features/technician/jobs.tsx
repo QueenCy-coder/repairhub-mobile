@@ -86,7 +86,7 @@ export function Jobs() {
                     <Muted style={{ fontSize: 11 }}>{mine ? 'Your quote' : 'Typical price'}</Muted>
                   </View>
                 </Row>
-                <Chips><Chip tone="blue" label={j.cat} /><Chip tone="blue" label={shortIssue(j.issue, 26)} /></Chips>
+                <Chips><Chip tone="blue" label={catName(j.cat)} /><Chip tone="blue" label={shortIssue(j.issue, 26)} /></Chips>
                 <Btns>
                   <Btn small title="View details" variant="sec" onPress={() => { set({ viewJob: j.id }); router.push('/job-details'); }} />
                   <Btn small title={mine ? 'View quote' : closedQuote(s, j.id) ?? 'Send quote'} variant={mine ? 'sec' : undefined} disabled={!verified || (!mine && !!closedQuote(s, j.id))} onPress={() => { set({ viewJob: j.id }); router.push('/send-quote'); }} />

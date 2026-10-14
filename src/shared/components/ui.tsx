@@ -188,7 +188,7 @@ export const Ph = ({ label, h = 80, style, icon }: { label: string; h?: number; 
 
 export function Banner({ tone, children, icon }: { tone: 'ok' | 'warn' | 'bad' | 'blue'; children: React.ReactNode; icon?: string }) {
   const [bg, fg] = TONES[tone];
-  return <View style={[s.banner, { backgroundColor: bg }]}>{icon ? <Text style={{ fontSize: 16, color: fg }}>{icon}</Text> : null}<View style={{ flex: 1 }}>{typeof children === 'string' ? <T style={{ fontSize: 14, color: C.text }}>{children}</T> : children}</View></View>;
+  return <View style={[s.banner, { backgroundColor: bg }]}>{icon === 'ℹ︎' ? <Ionicons name="information-circle" size={20} color={fg} /> : icon ? <Text style={{ fontSize: 16, color: fg }}>{icon}</Text> : null}<View style={{ flex: 1 }}>{typeof children === 'string' ? <T style={{ fontSize: 14, color: C.text }}>{children}</T> : children}</View></View>;
 }
 
 /** Vertical tracker (Figma "Track repair"). */

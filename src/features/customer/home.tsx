@@ -8,7 +8,7 @@ import { Logo } from '../../shared/components/logo';
 import { Avatar, FadeIn, Bold, C, Card, Chip, H4, Link, Muted, Row, Screen, T, Title, CatTile, Thumb, Banner, Chips, Empty, Input, Rating } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
-import { devicePhoto, HOME_GROUPS, isListedModel, first, JobStatus, offeredCategories, catInfo, N, plural, quotes, selectedQuote, statusLabel, notesFor } from '../../shared/core/data';
+import { devicePhoto, HOME_GROUPS, isListedModel, first, JobStatus, shownCategories, categoryAvailable, LAUNCH_CATEGORIES, catName, catInfo, N, plural, quotes, selectedQuote, statusLabel, notesFor } from '../../shared/core/data';
 import { useStore } from '../../shared/core/store';
 import { activeRoute, catNoun } from './common';
 
@@ -17,7 +17,7 @@ export function Home() {
   const active = !!s.rid && s.status >= JobStatus.Requested && s.status < JobStatus.Released;
   const unread = s.unreadCount ?? notesFor(s, 'customer').filter(n => !n.read).length;
   const [group, setGroup] = React.useState('All');
-  const tiles = offeredCategories(s).map(catInfo).filter(p => group === 'All' || p.group === group);
+  const tiles = shownCategories().map(catInfo).filter(p => group === 'All' || p.group === group);
   const start = (cat: string, model?: string, desc?: string) => {
     // A different category starts a clean description, so a phone request never carries laptop details.
     // After a finished or cancelled repair, the next request starts blank (no old model, photos, date or time).
@@ -58,11 +58,11 @@ export function Home() {
             const photo = devicePhoto(p.cat);
             return (
               <FadeIn key={p.cat} delay={i * 45} style={{ width: '31%' }}>
-                <Card onPress={() => start(p.cat)} style={{ padding: 8, alignItems: 'center', marginBottom: 0 }}>
+                <Card onPress={() => categoryAvailable(s, p.cat) ? start(p.cat) : toast(`${p.label} repairs are coming soon to Lagos`)} style={{ padding: 8, alignItems: 'center', marginBottom: 0, opacity: categoryAvailable(s, p.cat) ? 1 : 0.55 }}>
                   {photo ? <Image source={photo} style={{ width: '100%', height: 64, borderRadius: 8 }} contentFit="cover" />
                     : <View style={{ width: '100%', height: 64, borderRadius: 8, backgroundColor: C.primarySoft, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={p.icon as React.ComponentProps<typeof Ionicons>['name']} size={30} color={C.primary} /></View>}
                   <Bold style={{ fontSize: 13, marginTop: 6 }}>{p.label}</Bold>
-                  <Muted style={{ fontSize: 10, textAlign: 'center', lineHeight: 13, minHeight: 26 }}>{p.sub}</Muted>
+                  <Muted style={{ fontSize: 10, textAlign: 'center', lineHeight: 13, minHeight: 26 }}>{categoryAvailable(s, p.cat) ? p.sub : 'Coming soon'}</Muted>
                 </Card>
               </FadeIn>
             );
@@ -71,7 +71,7 @@ export function Home() {
       ) : <Card tone="dash"><Bold style={{ color: C.mute }}>{group} repairs are coming soon</Bold><Muted>We’re launching with electronics in Lagos first. <Link onPress={() => toast(`We’ll let you know when ${group} launches`)}>Notify me</Link></Muted></Card>}
       <H4 right={<Link onPress={() => start(s.cat || 'Smartphones')} style={{ fontSize: 14 }}>See all →</Link>}>Request a repair</H4>
       <View style={{ borderWidth: 1, borderColor: C.line, borderRadius: 14, overflow: 'hidden', backgroundColor: '#fff' }}>
-        {QUICK_REPAIRS.filter(([, cat]) => offeredCategories(s).includes(cat)).slice(0, 4).map(([label, cat, icon], i) => (
+        {QUICK_REPAIRS.filter(([, cat]) => categoryAvailable(s, cat)).slice(0, 4).map(([label, cat, icon], i) => (
           <Pressable key={label} onPress={() => start(cat)} accessibilityRole="button" accessibilityLabel={label}
             style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 14, borderTopWidth: i ? 1 : 0, borderColor: C.line, backgroundColor: pressed ? C.soft : '#fff' })}>
             <CatTile cat={cat} size={38} bg={C.soft} />
@@ -87,10 +87,9 @@ export function Home() {
 export const QUICK_REPAIRS: [string, string, React.ComponentProps<typeof Ionicons>['name']][] = [
   ['Phone screen repair', 'Smartphones', 'phone-portrait-outline'],
   ['Laptop repair', 'Laptops', 'laptop-outline'],
-  ['Air conditioner service', 'Air conditioners', 'snow-outline'],
-  ['Generator servicing', 'Generators', 'flash-outline'],
+  ['Tablet repair', 'Tablets', 'tablet-portrait-outline'],
+  ['Desktop repair', 'Desktops', 'desktop-outline'],
   ['Printer repair', 'Printers', 'print-outline'],
-  ['Console repair', 'Gaming consoles', 'game-controller-outline'],
 ];
 
 /** Home: the customer's live repair at a glance — device, progress, who's on it, and the one thing to do next. */
@@ -162,25 +161,40 @@ export function ActiveRepairCard() {
 export function Search() {
   const { s, set, get, run } = useStore();
   const [q, setQ] = React.useState('');
+  const [cat, setCat] = React.useState<string | null>(null);
   const [sort, setSort] = React.useState<'rated' | 'jobs'>('rated');
   const [loaded, setLoaded] = React.useState(false);
   React.useEffect(() => { run(() => backend.listTechnicians(get, set)).then(() => setLoaded(true)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // Verified technicians on RepairHub (from the API), with their real record.
-  const list = s.accounts.filter(a => a.role === 'technician' && a.apiId)
-    .map(a => [a.name, { title: (a.skills ?? []).join(', ') || 'Electronics technician', r: a.rating ?? 0, jobs: a.jobs ?? 0, areas: a.areas ?? [], skills: a.skills ?? [] }] as const)
-    .filter(([n, t]) => !q || (n + t.skills.join(' ') + t.areas.join(' ')).toLowerCase().includes(q.toLowerCase()))
-    .sort((a, b) => sort === 'rated' ? b[1].r - a[1].r : b[1].jobs - a[1].jobs);
+  // Verified technicians on RepairHub (from the API), with their real record. Only categories the app offers are shown.
+  const known = new Set(shownCategories());
+  const all = s.accounts.filter(a => a.role === 'technician' && a.apiId).map(a => ({
+    id: String(a.apiId), name: a.name, r: a.rating ?? 0, jobs: a.jobs ?? 0, areas: a.areas ?? [],
+    skills: (a.skills ?? []).filter(k => known.has(k)),
+  }));
+  const needle = q.trim().toLowerCase();
+  const list = all
+    .filter(t => !cat || t.skills.includes(cat))
+    .filter(t => !needle || (t.name + ' ' + t.skills.map(catName).join(' ') + ' ' + t.areas.join(' ')).toLowerCase().includes(needle))
+    .sort((a, b) => (sort === 'rated' ? b.r - a.r || b.jobs - a.jobs : b.jobs - a.jobs || b.r - a.r) || a.name.localeCompare(b.name));
+  const skillLine = (skills: string[]) => skills.length ? skills.slice(0, 3).map(catName).join(', ') + (skills.length > 3 ? ` +${skills.length - 3} more` : '') : 'Electronics technician';
   return (
     <Screen title="Find a technician">
-      <Input icon="⌕" value={q} onChangeText={setQ} placeholder="Search name or repair, e.g. laptop" accessibilityLabel="Search technicians" autoFocus />
-      <Chips><Chip label="✓ Verified only" tone="blue" /><Chip label="Highest rated" tone={sort === 'rated' ? 'on' : undefined} onPress={() => setSort('rated')} /><Chip label="Most jobs" tone={sort === 'jobs' ? 'on' : undefined} onPress={() => setSort('jobs')} /></Chips>
-      <Banner tone="blue" icon="ℹ︎">Prices come from quotes. Post one request and compare binding quotes side by side.</Banner>
-      {list.map(([n, t]) => (
-        <Card key={n} onPress={() => { set({ profile: n }); router.push({ pathname: '/tech-profile', params: { name: n } }); }}>
-          <Row style={{ justifyContent: 'flex-start', gap: 12 }}><Avatar label={n} verified /><View style={{ flex: 1 }}><Bold>{n}</Bold><Muted>{t.title}</Muted><Rating r={t.r} extra={`(${plural(t.jobs, 'job')})${t.areas.length ? ` · ${t.areas.slice(0, 2).join(', ')}` : ''}`} /></View><T style={{ color: C.mute }}>›</T></Row>
+      <Input icon="⌕" value={q} onChangeText={setQ} placeholder="Search by name, repair or area" accessibilityLabel="Search technicians" />
+      <Chips>
+        <Chip label="All" tone={!cat ? 'on' : undefined} onPress={() => setCat(null)} />
+        {LAUNCH_CATEGORIES.map(c => <Chip key={c} label={catName(c)} tone={cat === c ? 'on' : undefined} onPress={() => setCat(cat === c ? null : c)} />)}
+      </Chips>
+      <Chips>
+        <Chip label="Highest rated" tone={sort === 'rated' ? 'on' : undefined} onPress={() => setSort('rated')} />
+        <Chip label="Most jobs" tone={sort === 'jobs' ? 'on' : undefined} onPress={() => setSort('jobs')} />
+      </Chips>
+      <Banner tone="blue" icon="ℹ︎">Every technician here is verified by RepairHub. Prices come from quotes: post one request and compare quotes side by side.</Banner>
+      {list.map(t => (
+        <Card key={t.id} onPress={() => { set({ profile: t.name }); router.push({ pathname: '/tech-profile', params: { name: t.name } }); }}>
+          <Row style={{ justifyContent: 'flex-start', gap: 12 }}><Avatar label={t.name} verified /><View style={{ flex: 1 }}><Bold>{t.name}</Bold><Muted>{skillLine(t.skills)}</Muted><Rating r={t.r} extra={`(${plural(t.jobs, 'job')})${t.areas.length ? ` · ${t.areas.slice(0, 2).join(', ')}` : ''}`} /></View><Ionicons name="chevron-forward" size={18} color={C.mute} /></Row>
         </Card>
       ))}
-      {!list.length && loaded ? <Empty title={q ? 'No matches' : 'No verified technicians yet'} sub="Try another repair type, or post a request and let technicians come to you." action="Request a repair" onPress={() => router.push('/new-request')} /> : null}
+      {!list.length && loaded ? <Empty title={q || cat ? 'No matches' : 'No verified technicians yet'} sub={q || cat ? 'Try another repair type or clear the filters.' : 'Post a request and let technicians come to you.'} action={q || cat ? 'Clear filters' : 'Request a repair'} onPress={() => { if (q || cat) { setQ(''); setCat(null); } else router.push('/new-request'); }} /> : null}
     </Screen>
   );
 }
