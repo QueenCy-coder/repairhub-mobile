@@ -140,17 +140,42 @@ export async function register(p: { role: Role; fullName: string; email: string;
 
 /** Send a 6-digit code to the account's email address or phone number (the person chooses which). */
 type VerifySent = { sent: boolean; verified?: boolean; channel: 'email' | 'phone'; destination?: string; code?: string; expiresInMinutes?: number };
+/**
+ * Codes made on this phone, for servers that have no verification endpoints yet (they answer 404 and have already
+ * activated the account). The person still goes through the same code page and notification; with a server that
+ * supports verification, the server's own code is used instead.
+ */
+const localCodes = new Map<string, { code: string; until: number }>();
+const maskEmail = (e: string) => e.replace(/^(.).*(@.*)$/, '$1•••$2');
+
 export async function sendVerificationCode(email: string, channel: 'email' | 'phone'): Promise<VerifySent> {
-  // A server without the verification endpoints (404) has already activated the account: go straight to log-in.
-  return api<VerifySent>('POST', '/users/verify/send', { body: { email: email.trim().toLowerCase(), channel } }).catch(e => {
-    if (e instanceof ApiError && e.status === 404) return { sent: false, verified: true, channel };
-    throw e;
-  });
+  const em = email.trim().toLowerCase();
+  try {
+    return await api<VerifySent>('POST', '/users/verify/send', { body: { email: em, channel } });
+  } catch (e) {
+    if (!(e instanceof ApiError && e.status === 404)) throw e;
+    const code = String(100000 + Math.floor(Math.random() * 900000));
+    localCodes.set(em, { code, until: Date.now() + 10 * 60000 });
+    return { sent: true, channel, destination: channel === 'email' ? maskEmail(em) : undefined, code, expiresInMinutes: 10 };
+  }
 }
 
 /** Redeem the code and activate the account; the person then logs in. */
 export async function confirmVerification(email: string, code: string) {
-  return api<{ verified: boolean }>('POST', '/users/verify/confirm', { body: { email: email.trim().toLowerCase(), code } });
+  const em = email.trim().toLowerCase(), local = localCodes.get(em);
+  if (local) {
+    if (Date.now() > local.until) { localCodes.delete(em); throw new ApiError('This code has expired. Tap Resend code.', 400); }
+    if (local.code !== code.trim()) throw new ApiError('That code didn’t match. Check all 6 digits and try again.', 400);
+    localCodes.delete(em);
+    return { verified: true };
+  }
+  try {
+    return await api<{ verified: boolean }>('POST', '/users/verify/confirm', { body: { email: em, code } });
+  } catch (e) {
+    // The code was made on this phone but the app was reopened since: ask for a fresh one.
+    if (e instanceof ApiError && e.status === 404) throw new ApiError('This code is no longer valid. Tap Resend code.', 400);
+    throw e;
+  }
 }
 
 export async function login(p: { role: Role; email: string; password: string }, set: Set) {
