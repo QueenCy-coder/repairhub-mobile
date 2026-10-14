@@ -192,8 +192,11 @@ export async function updateMe(p: { fullName?: string; phone?: string }, set: Se
 
 /** The server's top-level category names, mapped to the names the app uses. */
 const CAT_ALIAS: Record<string, string> = { Phones: 'Smartphones', Televisions: 'TVs', 'Refrigerators & freezers': 'Refrigerators' };
+let catsAt = 0;
 async function categories(set: Set, get: Get) {
-  if (Object.keys(get().catIds ?? {}).length) return get().catIds;
+  // Reloaded once per app session and every 10 minutes, so a category added on the server shows up without reinstalling.
+  if (Object.keys(get().catIds ?? {}).length && Date.now() - catsAt < 10 * 60000) return get().catIds;
+  catsAt = Date.now();
   const list = await api<any[]>('GET', '/service-categories');
   // Only top-level categories: sub-categories (Screen replacement, Battery …) are not device types.
   const map = Object.fromEntries(list.filter(c => !c.parentCategory && c.isActive !== false).map(c => [CAT_ALIAS[c.name] ?? c.name, c._id]));

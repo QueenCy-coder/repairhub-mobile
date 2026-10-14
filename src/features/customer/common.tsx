@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, Modal, Text } from 'react-native';
 import { C } from '../../shared/components/ui';
-import { LIVE_CATEGORIES, JobStatus } from '../../shared/core/data';
+import { offeredCategories, JobStatus } from '../../shared/core/data';
 
 /** “Laptops” → “laptop”, for sentences like “7 verified laptop technicians”. */
 export const catNoun = (cat: string) => cat.replace(/s$/, '').toLowerCase();
@@ -13,9 +13,9 @@ export const catNoun = (cat: string) => cat.replace(/s$/, '').toLowerCase();
 export const PHONE_MODEL = /\b(iphone|galaxy [asmz]|redmi|tecno|infinix|itel|pixel [0-9]|oppo|vivo|nokia)\b/i;
 
 /** Repair-request validation (FR-6 + team rule: at least one photo). Shared by all three steps. */
-export function requestErrors(s: { cat: string; model: string; modelOther?: boolean; desc: string; photos: { type: string }[]; location: string; prefDate: string; prefTime: string }) {
+export function requestErrors(s: { cat: string; model: string; modelOther?: boolean; desc: string; photos: { type: string }[]; location: string; prefDate: string; prefTime: string; catIds?: Record<string, string> }) {
   const step1 = {
-    cat: !LIVE_CATEGORIES.includes(s.cat) ? 'Choose the type of device'
+    cat: !offeredCategories({ catIds: s.catIds ?? {} }).includes(s.cat) ? 'Choose the type of device'
       : PHONE_MODEL.test(s.model) && s.cat !== 'Smartphones' ? `“${s.model.trim()}” looks like a phone. Choose Smartphones so the right technicians are notified.` : null,
     model: s.model.trim().length < 2 ? 'Type or choose your brand and model' : null,
     desc: s.desc.trim().length < 20 ? `Describe the problem in at least 20 characters (${20 - s.desc.trim().length} more)` : null,

@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TextInputProps, TextStyle, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { CAT_GLYPH, CAT_IMG, devicePhoto, fmtCountdown, Media, PHOTOS } from '../core/data';
+import { catInfo, devicePhoto, fmtCountdown, Media, PHOTOS } from '../core/data';
 
 /** Design tokens taken from the Group 9 Figma file (Repair Hub hi-fi). */
 export const C = {
@@ -355,12 +355,12 @@ export const IconTile = ({ glyph, bg = C.primarySoft, size = 44 }: { glyph: stri
   <View style={{ width: size, height: size, borderRadius: 10, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: size / 2 }}>{glyph}</Text></View>
 );
 
-/** Category tile: custom artwork when we have it (tablet, TV, fridge), emoji otherwise. */
+/** Category tile: a real photo when we have one, otherwise a clean icon on a soft tile. */
 export const CatTile = ({ cat, size = 44, bg = C.primarySoft, model }: { cat: string; size?: number; bg?: string; model?: string }) => {
   const photo = devicePhoto(cat, model);
   if (photo) return <Image source={photo} style={{ width: size, height: size, borderRadius: 10, backgroundColor: C.soft }} contentFit="cover" transition={150} />;
   return <View style={{ width: size, height: size, borderRadius: 10, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
-    {CAT_IMG[cat] ? <Image source={CAT_IMG[cat]} style={{ width: size * 0.62, height: size * 0.62 }} contentFit="contain" /> : <Text style={{ fontSize: size / 2 }}>{CAT_GLYPH[cat] ?? '🔧'}</Text>}
+    <Ionicons name={catInfo(cat).icon as React.ComponentProps<typeof Ionicons>['name']} size={size * 0.52} color={C.primary} />
   </View>;
 };
 

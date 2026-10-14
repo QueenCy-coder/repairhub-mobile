@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { InfoTag, MiniSteps, StatusPill, Banner, FadeIn, Btn, Btns, C, Card, Chip, Chips, Empty, Input, Link, Muted, Row, Screen, T, Title } from '../../shared/components/ui';
-import { escrowTotal, isMine, JobStatus, availableJobs, jobTitle, todayLabel, custShort, myQuote, N, net, plural, LIVE_CATEGORIES, shortDate, typicalPrice } from '../../shared/core/data';
+import { escrowTotal, isMine, JobStatus, availableJobs, jobTitle, todayLabel, custShort, myQuote, N, net, plural, offeredCategories, catName, shortDate, typicalPrice } from '../../shared/core/data';
 import { shortRef } from '../../shared/core/api';
 import { kmLabel } from '../../shared/core/geo';
 import { useStore } from '../../shared/core/store';
@@ -46,7 +46,7 @@ export function CenterJobs() {
         <Row style={{ gap: 4 }}>{iconBtn('search', searching, () => { setSearching(v => !v); if (searching) setQ(''); }, 'Search jobs')}{iconBtn('options-outline', filtering, () => { setFiltering(v => !v); if (filtering) { setCat(null); setNearby(false); } }, 'Filter by device')}</Row>
       </Row>
       {searching ? <FadeIn><Input icon="⌕" value={q} onChangeText={setQ} placeholder="Search by device, repair or customer" autoFocus /></FadeIn> : null}
-      {filtering ? <FadeIn><Chips>{[null, ...(s.skills.length ? s.skills : LIVE_CATEGORIES)].map(c => <Chip key={c ?? 'all'} label={c ?? 'All devices'} tone={cat === c ? 'on' : undefined} onPress={() => setCat(c)} />)}<Chip label={`📍 Within ${NEARBY_KM} km`} tone={nearby ? 'on' : undefined} onPress={() => setNearby(v => !v)} /></Chips></FadeIn> : null}
+      {filtering ? <FadeIn><Chips>{[null, ...(s.skills.length ? s.skills : offeredCategories(s))].map(c => <Chip key={c ?? 'all'} label={c ? catName(c) : 'All devices'} tone={cat === c ? 'on' : undefined} onPress={() => setCat(c)} />)}<Chip label={`📍 Within ${NEARBY_KM} km`} tone={nearby ? 'on' : undefined} onPress={() => setNearby(v => !v)} /></Chips></FadeIn> : null}
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 4, marginBottom: 14 }}>
         {tabs.map(([k, l]) => (
           <Pressable key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityState={{ selected: tab === k }}

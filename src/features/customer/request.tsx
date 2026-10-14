@@ -6,14 +6,13 @@ import { Pressable, ScrollView, View, Text } from 'react-native';
 import { C, Input, Muted, T, CatTile, Btn, Demo, Field, MediaGrid, Screen, ChoiceOrType, Opt, Bold, Card, Chip, Row, Thumb, Empty } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
-import { isListedModel, MODELS, JobStatus, LIVE_CATEGORIES, repairPhoto, DATES, TIME_WINDOWS } from '../../shared/core/data';
+import { isListedModel, MODELS, JobStatus, offeredCategories, catInfo, repairPhoto, DATES, TIME_WINDOWS } from '../../shared/core/data';
 import { pickMedia, sampleMedia, askNotifications } from '../../shared/core/native';
 import { useStore } from '../../shared/core/store';
 import { EditLink, catNoun, requestErrors } from './common';
 
 
 /** Model picker: searchable list for the chosen device type, plus “Other” with a free-text box. */
-export const DEVICE_SHORT: Record<string, string> = { Smartphones: 'Phone', Laptops: 'Laptop', Tablets: 'Tablet', Desktops: 'Desktop', Printers: 'Printer' };
 
 /** One box: type to search the model list, pick a match — or just keep typing if yours isn't listed. */
 export function ModelPicker({ invalid }: { invalid: boolean }) {
@@ -91,16 +90,15 @@ export function NewRequest() {
     <Screen title="Request a repair" footer={<Btn title="Continue" onPress={next} />}>
       <Muted style={{ marginBottom: 12 }}>Step 1 of 3 · Tell us what’s wrong</Muted>
       <Field label="Device" required error={show('cat')}>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {LIVE_CATEGORIES.map(c => {
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {offeredCategories(s).map(c => {
             const on = s.cat === c;
-            const soon = Object.keys(s.catIds ?? {}).length > 0 && !s.catIds[c]; // not offered by the server yet
             return (
-              <Pressable key={c} disabled={soon} onPress={() => c !== s.cat && set({ cat: c, ...(isListedModel(c, s.model) ? {} : { model: '', modelOther: false }) })}
+              <Pressable key={c} onPress={() => c !== s.cat && set({ cat: c, ...(isListedModel(c, s.model) ? {} : { model: '', modelOther: false }) })}
                 accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={c}
-                style={({ pressed }) => ({ opacity: soon ? 0.4 : 1, flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 14, borderWidth: on ? 2 : 1, borderColor: on ? C.primary : C.line, backgroundColor: on ? C.primarySoft : '#fff', transform: [{ scale: pressed ? 0.96 : 1 }] })}>
+                style={({ pressed }) => ({ width: '31%', flexGrow: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 14, borderWidth: on ? 2 : 1, borderColor: on ? C.primary : C.line, backgroundColor: on ? C.primarySoft : '#fff', transform: [{ scale: pressed ? 0.96 : 1 }] })}>
                 <CatTile cat={c} size={42} bg={on ? '#fff' : C.primarySoft} />
-                <Text style={{ marginTop: 6, fontSize: 11, fontWeight: on ? '700' : '500', color: on ? C.primary : C.text }} numberOfLines={1}>{soon ? 'Soon' : DEVICE_SHORT[c] ?? c}</Text>
+                <Text style={{ marginTop: 6, fontSize: 11, fontWeight: on ? '700' : '500', color: on ? C.primary : C.text }} numberOfLines={1}>{catInfo(c).short}</Text>
                 {on ? <View style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: 9, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' }}><Ionicons name="checkmark" size={10} color="#fff" /></View> : null}
               </Pressable>
             );

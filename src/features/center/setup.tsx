@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import React from 'react';
 import { Alert, Text, View } from 'react-native';
 import { Bold, Btn, C, Card, Chip, Chips, Field, H4, Input, MediaGrid, Muted, Opt, Row, Screen } from '../../shared/components/ui';
-import { LIVE_CATEGORIES, LAGOS_AREAS } from '../../shared/core/data';
+import { offeredCategories, catName, LAGOS_AREAS } from '../../shared/core/data';
 import * as backend from '../../shared/core/backend';
 import { askNotifications, pickMedia } from '../../shared/core/native';
 import { useStore } from '../../shared/core/store';
@@ -39,7 +39,7 @@ export function CenterSetup() {
       <Field label="Address (optional)"><Input icon="◎" value={addr} onChangeText={setAddr} placeholder="e.g. 12 Adeola Odeku St, Victoria Island" autoCapitalize="words" /></Field>
       <H4>2 · Services & skills</H4>
       <Card><Row><Bold>Electronics</Bold><Chip tone="ok" label="Live in Lagos" /></Row>
-        <View style={{ marginTop: 8 }}>{LIVE_CATEGORIES.map(k => { const soon = Object.keys(s.catIds ?? {}).length > 0 && !s.catIds[k]; return <Opt key={k} check label={soon ? `${k} · coming soon` : k} disabled={soon} on={!soon && s.skills.includes(k)} onPress={() => set(p => ({ skills: p.skills.includes(k) ? p.skills.filter(x => x !== k) : [...p.skills, k] }))} />; })}</View>
+        <View style={{ marginTop: 8 }}>{offeredCategories(s).map(k => <Opt key={k} check label={catName(k)} on={s.skills.includes(k)} onPress={() => set(p => ({ skills: p.skills.includes(k) ? p.skills.filter(x => x !== k) : [...p.skills, k] }))} />)}</View>
         <Muted>Home appliances, home services and furniture open later. You can add them when they launch.</Muted>
       </Card>
       <H4>3 · Service area</H4>

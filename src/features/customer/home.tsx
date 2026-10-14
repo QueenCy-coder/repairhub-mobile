@@ -8,7 +8,7 @@ import { Logo } from '../../shared/components/logo';
 import { Avatar, FadeIn, Bold, C, Card, Chip, H4, Link, Muted, Row, Screen, T, Title, CatTile, Thumb, Banner, Chips, Empty, Input, Rating } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
-import { devicePhoto, HOME_GROUPS, isListedModel, first, JobStatus, POPULAR, N, plural, quotes, selectedQuote, statusLabel, notesFor } from '../../shared/core/data';
+import { devicePhoto, HOME_GROUPS, isListedModel, first, JobStatus, offeredCategories, catInfo, N, plural, quotes, selectedQuote, statusLabel, notesFor } from '../../shared/core/data';
 import { useStore } from '../../shared/core/store';
 import { activeRoute, catNoun } from './common';
 
@@ -17,7 +17,7 @@ export function Home() {
   const active = !!s.rid && s.status >= JobStatus.Requested && s.status < JobStatus.Released;
   const unread = s.unreadCount ?? notesFor(s, 'customer').filter(n => !n.read).length;
   const [group, setGroup] = React.useState('All');
-  const tiles = POPULAR.filter(p => group === 'All' || p.group === group);
+  const tiles = offeredCategories(s).map(catInfo).filter(p => group === 'All' || p.group === group);
   const start = (cat: string, model?: string, desc?: string) => {
     // A different category starts a clean description, so a phone request never carries laptop details.
     // After a finished or cancelled repair, the next request starts blank (no old model, photos, date or time).
@@ -58,12 +58,11 @@ export function Home() {
             const photo = devicePhoto(p.cat);
             return (
               <FadeIn key={p.cat} delay={i * 45} style={{ width: '31%' }}>
-                <Card onPress={() => p.live ? start(p.cat) : toast(`${p.label} repairs are coming soon to Lagos`)} style={{ padding: 8, alignItems: 'center', marginBottom: 0, opacity: p.live ? 1 : 0.6 }}>
+                <Card onPress={() => start(p.cat)} style={{ padding: 8, alignItems: 'center', marginBottom: 0 }}>
                   {photo ? <Image source={photo} style={{ width: '100%', height: 64, borderRadius: 8 }} contentFit="cover" />
-                    : p.img ? <View style={{ width: '100%', height: 64, borderRadius: 8, backgroundColor: C.soft, alignItems: 'center', justifyContent: 'center' }}><Image source={p.img} style={{ width: 44, height: 44 }} contentFit="contain" /></View>
-                      : <View style={{ width: '100%', height: 64, borderRadius: 8, backgroundColor: C.soft, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 30 }}>{p.glyph}</Text></View>}
+                    : <View style={{ width: '100%', height: 64, borderRadius: 8, backgroundColor: C.primarySoft, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={p.icon as React.ComponentProps<typeof Ionicons>['name']} size={30} color={C.primary} /></View>}
                   <Bold style={{ fontSize: 13, marginTop: 6 }}>{p.label}</Bold>
-                  <Muted style={{ fontSize: 10, textAlign: 'center', lineHeight: 13 }}>{p.live ? p.sub : 'Coming soon'}</Muted>
+                  <Muted style={{ fontSize: 10, textAlign: 'center', lineHeight: 13, minHeight: 26 }} numberOfLines={2}>{p.sub}</Muted>
                 </Card>
               </FadeIn>
             );
@@ -72,7 +71,7 @@ export function Home() {
       ) : <Card tone="dash"><Bold style={{ color: C.mute }}>{group} repairs are coming soon</Bold><Muted>We’re launching with electronics in Lagos first. <Link onPress={() => toast(`We’ll let you know when ${group} launches`)}>Notify me</Link></Muted></Card>}
       <H4 right={<Link onPress={() => start(s.cat || 'Smartphones')} style={{ fontSize: 14 }}>See all →</Link>}>Request a repair</H4>
       <View style={{ borderWidth: 1, borderColor: C.line, borderRadius: 14, overflow: 'hidden', backgroundColor: '#fff' }}>
-        {QUICK_REPAIRS.map(([label, cat, icon], i) => (
+        {QUICK_REPAIRS.filter(([, cat]) => offeredCategories(s).includes(cat)).slice(0, 4).map(([label, cat, icon], i) => (
           <Pressable key={label} onPress={() => start(cat)} accessibilityRole="button" accessibilityLabel={label}
             style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 14, borderTopWidth: i ? 1 : 0, borderColor: C.line, backgroundColor: pressed ? C.soft : '#fff' })}>
             <CatTile cat={cat} size={38} bg={C.soft} />
@@ -88,8 +87,10 @@ export function Home() {
 export const QUICK_REPAIRS: [string, string, React.ComponentProps<typeof Ionicons>['name']][] = [
   ['Phone screen repair', 'Smartphones', 'phone-portrait-outline'],
   ['Laptop repair', 'Laptops', 'laptop-outline'],
-  ['Tablet repair', 'Tablets', 'tablet-portrait-outline'],
+  ['Air conditioner service', 'Air conditioners', 'snow-outline'],
+  ['Generator servicing', 'Generators', 'flash-outline'],
   ['Printer repair', 'Printers', 'print-outline'],
+  ['Console repair', 'Gaming consoles', 'game-controller-outline'],
 ];
 
 /** Home: the customer's live repair at a glance — device, progress, who's on it, and the one thing to do next. */

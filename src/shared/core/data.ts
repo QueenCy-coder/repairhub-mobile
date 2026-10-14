@@ -264,7 +264,34 @@ export const DATES = (() => {
 export const TIMES = ['9:00 AM', '11:00 AM', '2:00 PM', '4:00 PM'];
 export const TIME_WINDOWS = ['8:00 – 10:00 AM', '10:00 AM – 1:00 PM', '1:00 – 4:00 PM', '4:00 – 6:00 PM'];
 
-export const LIVE_CATEGORIES = ['Smartphones', 'Laptops', 'Tablets', 'Desktops', 'Printers'];
+/** Everything the app can show about a category. `cat` is the app's own name (the server's names are mapped to these in backend.ts). */
+export type CatInfo = { cat: string; label: string; sub: string; short: string; group: 'Electronics' | 'Appliances'; icon: string };
+export const CATEGORY_INFO: CatInfo[] = [
+  { cat: 'Smartphones', label: 'Phones', short: 'Phone', sub: 'Screen, battery, software', group: 'Electronics', icon: 'phone-portrait-outline' },
+  { cat: 'Laptops', label: 'Laptops', short: 'Laptop', sub: 'MacBook, Dell, HP, Lenovo', group: 'Electronics', icon: 'laptop-outline' },
+  { cat: 'Gaming consoles', label: 'Consoles', short: 'Console', sub: 'PlayStation, Xbox, Switch', group: 'Electronics', icon: 'game-controller-outline' },
+  { cat: 'Printers', label: 'Printers', short: 'Printer', sub: 'Jams, ink, Wi-Fi', group: 'Electronics', icon: 'print-outline' },
+  { cat: 'TVs', label: 'TVs', short: 'TV', sub: 'Screen, audio, power', group: 'Electronics', icon: 'tv-outline' },
+  { cat: 'Air conditioners', label: 'ACs', short: 'AC', sub: 'Cooling, gas, installation', group: 'Appliances', icon: 'snow-outline' },
+  { cat: 'Refrigerators', label: 'Fridges', short: 'Fridge', sub: 'Cooling, leakage', group: 'Appliances', icon: 'cube-outline' },
+  { cat: 'Washing machines', label: 'Washers', short: 'Washer', sub: 'Drum, spin, leaks', group: 'Appliances', icon: 'water-outline' },
+  { cat: 'Generators', label: 'Generators', short: 'Generator', sub: 'Start-up, servicing', group: 'Appliances', icon: 'flash-outline' },
+  // Not on the live server today, but a server that has them (the local test one) still works.
+  { cat: 'Tablets', label: 'Tablets', short: 'Tablet', sub: 'iPad, Galaxy Tab', group: 'Electronics', icon: 'tablet-portrait-outline' },
+  { cat: 'Desktops', label: 'Desktops', short: 'Desktop', sub: 'PC, iMac, all-in-one', group: 'Electronics', icon: 'desktop-outline' },
+];
+/** Shown until the server's own list has loaded: the categories the live server has. */
+export const LIVE_CATEGORIES = ['Smartphones', 'Laptops', 'Gaming consoles', 'Printers', 'TVs', 'Air conditioners', 'Refrigerators', 'Washing machines', 'Generators'];
+/** What the app offers: exactly the categories the server has (a new one the app doesn't know yet shows with a generic icon). */
+export const offeredCategories = (s: Pick<State, 'catIds'>): string[] => {
+  const have = Object.keys(s.catIds ?? {});
+  if (!have.length) return LIVE_CATEGORIES;
+  const rank = (c: string) => { const i = CATEGORY_INFO.findIndex(x => x.cat === c); return i < 0 ? 99 : i; };
+  return [...have].sort((a, b) => rank(a) - rank(b));
+};
+/** The name people see (the server's own wording): Phones, Televisions, Refrigerators & freezers … */
+export const catName = (cat: string) => ({ Smartphones: 'Phones', TVs: 'Televisions', Refrigerators: 'Refrigerators & freezers' } as Record<string, string>)[cat] ?? cat;
+export const catInfo = (cat: string): CatInfo => CATEGORY_INFO.find(c => c.cat === cat) ?? { cat, label: cat, short: cat, sub: 'Repairs', group: 'Electronics', icon: 'construct-outline' };
 /** Common models per launch category (Nigerian market). “Other” lets customers type anything not listed. */
 export const MODELS: Record<string, string[]> = {
   Smartphones: ['iPhone 15 Pro Max', 'iPhone 15', 'iPhone 14 Pro', 'iPhone 14', 'iPhone 13', 'iPhone 12', 'iPhone 11', 'iPhone XR', 'Samsung Galaxy S23', 'Samsung Galaxy S22', 'Samsung Galaxy A54', 'Samsung Galaxy A52', 'Samsung Galaxy A14', 'Tecno Camon 20', 'Tecno Spark 10', 'Infinix Hot 30', 'Infinix Note 30', 'Redmi Note 12', 'itel A70', 'Google Pixel 7'],
@@ -273,18 +300,16 @@ export const MODELS: Record<string, string[]> = {
   Desktops: ['iMac 24" (M1)', 'iMac 27"', 'HP ProDesk 400', 'HP EliteDesk 800', 'HP All-in-One 24', 'Dell OptiPlex 7090', 'Dell Inspiron All-in-One', 'Lenovo ThinkCentre M70', 'Lenovo IdeaCentre AIO 3', 'Custom-built PC'],
   Printers: ['HP LaserJet Pro M404', 'HP LaserJet Pro MFP M428', 'HP DeskJet 2710', 'HP Smart Tank 515', 'Canon PIXMA G3411', 'Canon PIXMA MG2540S', 'Canon i-SENSYS LBP6030', 'Epson EcoTank L3250', 'Epson L3110', 'Brother HL-L2350DW', 'Brother DCP-T420W'],
 };
+Object.assign(MODELS, {
+  'Gaming consoles': ['PlayStation 5', 'PlayStation 5 Digital', 'PlayStation 4 Pro', 'PlayStation 4 Slim', 'Xbox Series X', 'Xbox Series S', 'Xbox One', 'Nintendo Switch', 'Nintendo Switch OLED'],
+  TVs: ['Samsung 43" Smart TV', 'Samsung 55" Smart TV', 'LG 43" Smart TV', 'LG 55" Smart TV', 'Hisense 43" Smart TV', 'Hisense 55" Smart TV', 'TCL 43" Smart TV', 'Sony Bravia 55"', 'Skyworth 43"'],
+  'Air conditioners': ['LG 1HP split', 'LG 1.5HP split', 'Samsung 1HP split', 'Samsung 1.5HP split', 'Hisense 1HP split', 'Hisense 1.5HP split', 'Midea 1.5HP split', 'Haier Thermocool 1HP', 'Haier Thermocool 1.5HP'],
+  Refrigerators: ['LG double door', 'Samsung double door', 'Hisense double door', 'Hisense single door', 'Haier Thermocool double door', 'Haier Thermocool chest freezer', 'Midea double door', 'Scanfrost double door'],
+  'Washing machines': ['LG front load', 'LG top load', 'Samsung front load', 'Samsung top load', 'Hisense top load', 'Haier Thermocool twin tub', 'Midea front load', 'Binatone twin tub'],
+  Generators: ['Tiger 2.5kVA', 'Tiger 3.5kVA', 'Honda EU22i', 'Elepaq SV2800', 'Sumec Firman 3kVA', 'Sumec Firman 5kVA', 'Mikano 7.5kVA', 'Lutian 2.5kVA'],
+});
 export const isListedModel = (cat: string, model: string) => (MODELS[cat] ?? []).includes(model);
 
-export const CAT_GLYPH: Record<string, string> = { Smartphones: '📱', Laptops: '💻', Tablets: '📲', Desktops: '🖥️', Printers: '🖨️' };
-/** Figma "Popular categories" grid. Only Electronics is live at launch (GTM plan); the rest show "Soon". */
-export const POPULAR: { cat: string; label: string; sub: string; glyph: string; img?: number; live: boolean; group: string }[] = [
-  { cat: 'Smartphones', label: 'Phones', sub: 'Screen, battery, software', glyph: '📱', live: true , group: 'Electronics' },
-  { cat: 'Laptops', label: 'Laptops', sub: 'MacBook, Dell, HP, Lenovo', glyph: '💻', live: true , group: 'Electronics' },
-  { cat: 'Tablets', label: 'Tablets', sub: 'iPad, Galaxy Tab', glyph: '📲', img: require('../../../assets/cat-tablet.png'), live: true , group: 'Electronics' },
-  { cat: 'Printers', label: 'Printers', sub: 'Jams, ink, Wi-Fi', glyph: '🖨️', live: true , group: 'Electronics' },
-  { cat: 'TVs', label: 'TVs', sub: 'Screen, audio, power', glyph: '📺', img: require('../../../assets/cat-tv.png'), live: false , group: 'Appliances' },
-  { cat: 'Refrigerators', label: 'Fridges', sub: 'Cooling, leakage', glyph: '🧊', img: require('../../../assets/cat-fridge.png'), live: false , group: 'Appliances' },
-];
 export const HOME_GROUPS = ['All', 'Electronics', 'Appliances', 'Furniture', 'Automotive'];
 export const POPULAR_SERVICES = [
   { label: 'Phone screen repair', cat: 'Smartphones', model: 'iPhone 12', desc: 'Cracked screen, touch still works in some areas.', glyph: '📱' },
@@ -427,7 +452,7 @@ export const jobTitle = (j: Pick<Job, 'dev' | 'issue' | 'cat'>) => `${j.dev || '
 /** What this kind of repair usually costs in Lagos (guide shown to technicians before they quote). */
 export function typicalPrice(cat: string, issue: string) {
   const sv = serviceOf(issue, cat);
-  const base: Record<string, number> = { Smartphones: 15000, Tablets: 20000, Laptops: 25000, Desktops: 22000, Printers: 12000 };
+  const base: Record<string, number> = { Smartphones: 15000, Tablets: 20000, Laptops: 25000, Desktops: 22000, Printers: 12000, 'Gaming consoles': 18000, TVs: 20000, 'Air conditioners': 25000, Refrigerators: 22000, 'Washing machines': 20000, Generators: 28000 };
   const k: Record<string, number> = { 'screen repair': 1.3, 'battery replacement': 0.8, 'charging port repair': 0.6, 'paper jam fix': 0.7, 'keyboard repair': 1, 'water damage repair': 1.2, repair: 1 };
   return Math.round(((base[cat] ?? 15000) * (k[sv] ?? 1)) / 500) * 500;
 }
@@ -633,11 +658,6 @@ export function devicePhoto(cat: string, model = ''): number | undefined {
   if (cat === 'Refrigerators') return require('../../../assets/img/dev-fridge.jpg');
   return undefined;
 }
-
-/** Category artwork: custom drawn where no good emoji exists (tablet, TV, fridge). */
-export const CAT_IMG: Record<string, number> = {
-  Tablets: require('../../../assets/cat-tablet.png'), TVs: require('../../../assets/cat-tv.png'), Refrigerators: require('../../../assets/cat-fridge.png'),
-};
 
 /** Past repairs on the demo customer account (a brand-new customer has none). */
 export type PastRepair = { id: string; model: string; cat: string; service: string; date: string; amount: number; tech: string; status: 'Completed' | 'Cancelled'; warrantyUntil?: string; warrantyMonths?: number; note?: string };
