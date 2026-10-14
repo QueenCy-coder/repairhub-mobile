@@ -30,7 +30,6 @@ The app talks to the live API by default (`.env`). The hosted API sleeps when id
 
 - [`BACKEND-NEEDS.md`](BACKEND-NEEDS.md): **what the app still needs from the backend**, with evidence and suggested fixes.
 - [`docs/RepairHub-API-Integration-Report.html`](docs/RepairHub-API-Integration-Report.html): what is connected, the full end-to-end test results, what is left.
-- [`docs/design/`](docs/design): the earlier clickable prototype and the wireframe review.
 
 ## Run against your own copy of the API (optional)
 

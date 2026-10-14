@@ -1,7 +1,7 @@
 // Helpers shared by the technician screens.
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
-import { Switch, Text, View, Image } from 'react-native';
+import { View, Image } from 'react-native';
 import { Banner, Bold, C, Muted, Row, T, Card, Timeline, IconBox, FadeIn, CatTile } from '../../shared/components/ui';
 import { techStats, walletBase, escrowTotal, isMine, JobStatus, net, COMMISSION } from '../../shared/core/data';
 import { useStore } from '../../shared/core/store';
@@ -16,11 +16,6 @@ export function OfflineStrip({ showToggle, toggleOnly }: { showToggle?: boolean;
       {toggleOnly ? null : !online ? (
         <Banner tone="warn" icon="⚠︎"><Bold style={{ fontSize: 14 }}>Offline{deviceOnline ? ' (simulated)' : ''}</Bold><T style={{ fontSize: 13, color: C.text }}>{n ? `${n} update${n > 1 ? 's' : ''} saved on this phone. They sync automatically when you reconnect.` : 'You can keep updating job status. Updates sync when you reconnect.'}</T></Banner>
       ) : s.lastSync ? <Muted style={{ marginBottom: 6 }}>✓ All updates synced · last sync {s.lastSync}</Muted> : null}
-      {false && (showToggle || toggleOnly) ? (
-        <View style={{ borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#B692F6', backgroundColor: '#F9F5FF', borderRadius: 10, padding: 10, marginBottom: 8 }}>
-          <Row><Text style={{ color: '#6941C6', fontWeight: '600', flex: 1, fontSize: 13 }}>▶ DEMO · Simulate no connectivity</Text><Switch value={s.simOffline} onValueChange={v => set({ simOffline: v })} /></Row>
-        </View>
-      ) : null}
     </View>
   );
 }

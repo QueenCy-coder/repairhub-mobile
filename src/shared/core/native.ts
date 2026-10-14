@@ -159,10 +159,3 @@ export async function pickFiles(limit: number): Promise<{ name: string; size: nu
 /** Copies text to the clipboard. */
 export async function copyText(t: string) { try { await Clipboard.setStringAsync(t); return true; } catch { return false; } }
 
-/** A bundled sample photo (demo), treated like a picked photo. */
-export async function sampleMedia(mod: number, name: string): Promise<Media> {
-  const m = mod as unknown as number | string | { uri?: string; default?: string };
-  const uri = (Platform.OS !== 'web' && Image.resolveAssetSource?.(m as number)?.uri)
-    || (typeof m === 'string' ? m : (m as { uri?: string; default?: string }).uri ?? (m as { default?: string }).default ?? '');
-  return { uri, type: 'image', name, sample: sampleFromName(name) };
-}

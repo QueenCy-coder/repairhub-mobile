@@ -238,20 +238,6 @@ export function Countdown({ until, style }: { until: number; style?: any }) {
   return <Text style={[{ fontFamily: mono, color: C.ink }, style]}>{fmtCountdown(until - now)}</Text>;
 }
 
-/** Dashed purple-blue box: demo-only controls (switch roles, simulate the other party). Not product UI. */
-const HIDE_DEMO = true;
-export function Demo({ text, actions }: { text: string; actions: { label: string; onPress: () => void }[] }) {
-  // Presentation build: demo shortcuts are hidden; the flows they stood in for run on their own.
-  if (HIDE_DEMO) return null;
-  return (
-    <View style={s.demo}>
-      <Text style={{ color: '#6941C6', fontSize: 12, fontWeight: '600' }}>▶ DEMO · {text}</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-        {actions.map(a => <Pressable key={a.label} onPress={a.onPress} style={s.demoBtn} accessibilityRole="button"><Text style={{ color: '#6941C6', fontSize: 12, fontWeight: '700' }}>{a.label}</Text></Pressable>)}
-      </View>
-    </View>
-  );
-}
 
 export function Empty({ title, sub, action, onPress }: { title: string; sub: string; action?: string; onPress?: () => void }) {
   return <View style={{ alignItems: 'center', paddingVertical: 48 }}><View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: C.primarySoft, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 28 }}>🛠️</Text></View><Title style={{ marginTop: 12, textAlign: 'center', fontSize: 18 }}>{title}</Title><Muted style={{ textAlign: 'center', marginBottom: 12 }}>{sub}</Muted>{action ? <Btn title={action} variant="sec" onPress={onPress} style={{ alignSelf: 'stretch' }} /> : null}</View>;

@@ -3,11 +3,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, View, Text } from 'react-native';
-import { C, Input, Muted, T, CatTile, Btn, Demo, Field, MediaGrid, Screen, ChoiceOrType, Opt, Bold, Card, Chip, Row, Thumb, Empty } from '../../shared/components/ui';
+import { C, Input, Muted, T, CatTile, Btn, Field, MediaGrid, Screen, ChoiceOrType, Opt, Bold, Card, Chip, Row, Thumb, Empty } from '../../shared/components/ui';
 import { shortRef } from '../../shared/core/api';
 import * as backend from '../../shared/core/backend';
-import { isListedModel, MODELS, JobStatus, offeredCategories, catInfo, repairPhoto, DATES, TIME_WINDOWS } from '../../shared/core/data';
-import { pickMedia, sampleMedia, askNotifications } from '../../shared/core/native';
+import { isListedModel, MODELS, JobStatus, offeredCategories, catInfo, DATES, TIME_WINDOWS } from '../../shared/core/data';
+import { pickMedia, askNotifications } from '../../shared/core/native';
 import { useStore } from '../../shared/core/store';
 import { EditLink, catNoun, requestErrors } from './common';
 
@@ -118,7 +118,6 @@ export function NewRequest() {
         }} onRemove={i => set(p => ({ photos: p.photos.filter((_, j) => j !== i) }))} />
         {!show('photos') ? <Muted style={{ marginTop: 6 }}>At least one photo is required. Photos up to 10 MB, one video up to 50 MB. Tap ✕ to remove one.</Muted> : null}
       </Field>
-      {photos.length < 5 ? <Demo text="no photo handy?" actions={[{ label: `Use a sample photo of a faulty ${catNoun(s.cat)}`, onPress: async () => { const m = await sampleMedia(repairPhoto(s.cat, 'broken'), `${({ Smartphones: 'phone', Tablets: 'ipad', Laptops: 'laptop', Desktops: 'desktop', Printers: 'printer' } as Record<string, string>)[s.cat] ?? 'phone'}_broken.jpg`); set(p => ({ photos: [m, ...p.photos] })); } }]} /> : null}
     </Screen>
   );
 }
