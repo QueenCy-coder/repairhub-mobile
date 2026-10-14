@@ -62,7 +62,7 @@ export function Home() {
                   {photo ? <Image source={photo} style={{ width: '100%', height: 64, borderRadius: 8 }} contentFit="cover" />
                     : <View style={{ width: '100%', height: 64, borderRadius: 8, backgroundColor: C.primarySoft, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={p.icon as React.ComponentProps<typeof Ionicons>['name']} size={30} color={C.primary} /></View>}
                   <Bold style={{ fontSize: 13, marginTop: 6 }}>{p.label}</Bold>
-                  <Muted style={{ fontSize: 10, textAlign: 'center', lineHeight: 13, minHeight: 26 }} numberOfLines={2}>{p.sub}</Muted>
+                  <Muted style={{ fontSize: 10, textAlign: 'center', lineHeight: 13, minHeight: 26 }}>{p.sub}</Muted>
                 </Card>
               </FadeIn>
             );
